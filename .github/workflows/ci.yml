@@ -77,9 +77,12 @@ jobs:
           done
           docker logs app; exit 1
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
       - name: End-to-end test (upload, segment, extra model, mistakes)
         run: |
-          pip install httpx==0.28.1 huggingface_hub==2.4.0
+          pip install httpx==0.28.1 huggingface_hub==2.4.0 nibabel==5.5.0 numpy==2.4.6
           python scripts/hub.py download --repo "$HF_REPO" --what samples --to .
           python api/test_api.py http://localhost:7860
       - name: Viewer is served
