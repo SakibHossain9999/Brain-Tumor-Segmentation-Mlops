@@ -13,8 +13,6 @@ tags:
   - segresnet
   - swin-unetr
   - segformer3d
-datasets:
-  - Medical Segmentation Decathlon (Task01 BrainTumour)
 metrics:
   - dice
 ---
