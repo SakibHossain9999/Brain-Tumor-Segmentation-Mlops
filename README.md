@@ -28,12 +28,12 @@ SegResNet is the champion: same accuracy, about 4× faster on CPU than Swin UNET
 | `tests/` | unit tests on synthetic data (labels, meshing, upload checks, metrics, inference) |
 | `Dockerfile`, `.github/workflows/ci.yml` | CI: tests → viewer build → Docker image built and tested end to end at 2 CPUs / 16 GB → pushed to GHCR |
 
-Large files (ONNX models, sample brains, gallery cases) are stored on the Hugging Face Hub and fetched by `scripts/hub.py`.
+Large files (ONNX models, sample brains, gallery cases) are stored on the Hugging Face Hub ([MohammadSakibHossain/brain-tumor-segmentation-mlops](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-mlops)) and fetched by `scripts/hub.py`.
 
 ## Run it
 
 ```bash
-docker build -t brain-seg --build-arg HF_REPO=<hf-user>/brain-tumor-segmentation-mlops .
+docker build -t brain-seg .
 docker run -p 7860:7860 brain-seg        # http://localhost:7860
 ```
 

@@ -1,5 +1,5 @@
 # The whole app in one container: the 3D viewer (static files) + the upload service (FastAPI, ONNX on CPU).
-#   docker build -t brain-seg --build-arg HF_REPO=USER/brain-tumor-segmentation-mlops .
+#   docker build -t brain-seg .
 #   docker run -p 7860:7860 --memory 16g --cpus 2 brain-seg      -> http://localhost:7860
 # Port 7860 and the 2-core / 16 GB limits match a free Hugging Face Space.
 
@@ -37,7 +37,7 @@ COPY scripts/hub.py scripts/hub.py
 COPY --from=web /web/dist web/dist
 
 # large files from the Hugging Face Hub: models, sample brains (downloads) and gallery cases (viewer)
-ARG HF_REPO
+ARG HF_REPO=MohammadSakibHossain/brain-tumor-segmentation-mlops
 RUN test -n "$HF_REPO" || (echo "set --build-arg HF_REPO=USER/brain-tumor-segmentation-mlops" && exit 1) \
  && python scripts/hub.py download --repo "$HF_REPO" --to /app \
         --samples-dir /app/web/dist/samples --cases-dir /app/web/dist/cases \

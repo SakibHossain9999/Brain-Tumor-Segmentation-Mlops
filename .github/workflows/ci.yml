@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  HF_REPO: ${{ vars.HF_REPO }}   # repo variable, e.g. USER/brain-tumor-segmentation-mlops
+  HF_REPO: ${{ vars.HF_REPO || 'MohammadSakibHossain/brain-tumor-segmentation-mlops' }}   # large files on the Hugging Face Hub
   IMAGE: ghcr.io/${{ github.repository_owner }}/brain-tumor-segmentation
 
 jobs:
@@ -49,7 +49,6 @@ jobs:
 
   docker:
     needs: [tests, web]
-    if: vars.HF_REPO != ''   # skipped until the models are on the Hugging Face Hub
     runs-on: ubuntu-latest
     permissions:
       contents: read
