@@ -1,0 +1,64 @@
+{
+  "model": "segformer3d",
+  "input": {
+    "name": "scans",
+    "shape": [
+      1,
+      4,
+      160,
+      160,
+      160
+    ],
+    "channels": [
+      "FLAIR",
+      "T1",
+      "T1 + contrast",
+      "T2"
+    ]
+  },
+  "output": {
+    "name": "logits",
+    "regions": [
+      "WT",
+      "TC",
+      "ET"
+    ],
+    "threshold": 0.5,
+    "activation": "sigmoid"
+  },
+  "checkpoint_step": 24000,
+  "val_dice_mean": 0.788,
+  "test_dice_mean": 0.8133,
+  "exporter": "dynamo",
+  "config": {
+    "seed": 42,
+    "experiment": "brain-npr",
+    "data": {
+      "crop_size": [
+        160,
+        160,
+        160
+      ],
+      "batch_size": 2,
+      "num_workers": 8,
+      "cache_workers": 16
+    },
+    "train": {
+      "max_steps": 30000,
+      "lr": 0.0001,
+      "weight_decay": 1e-05,
+      "warmup_steps": 500,
+      "amp": true,
+      "log_every": 50,
+      "val_every": 1000,
+      "val_overlap": 0.5,
+      "val_image_cases": 3
+    },
+    "model": {
+      "name": "segformer3d"
+    }
+  },
+  "onnx_vs_pytorch_dice": 0.9829,
+  "cpu_s_per_case_2_threads": 1.4,
+  "cpu_s_per_case_8_threads": 0.8
+}

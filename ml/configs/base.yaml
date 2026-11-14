@@ -1,0 +1,20 @@
+# Settings shared by ALL models. A model config may only add a `model:` section.
+seed: 42
+experiment: brain-npr
+
+data:
+  crop_size: [160, 160, 160]
+  batch_size: 2
+  num_workers: 8
+  cache_workers: 16
+
+train:
+  max_steps: 30000          # ~176 epochs at 340 cases / batch 2
+  lr: 1.0e-4
+  weight_decay: 1.0e-5
+  warmup_steps: 500         # learning rate ramps up over the first 500 steps
+  amp: true                 # bfloat16 mixed precision
+  log_every: 50             # training loss + learning rate
+  val_every: 1000           # validation Dice + loss, checkpoints, images
+  val_overlap: 0.5          # sliding-window overlap at validation
+  val_image_cases: 3        # how many validation cases to picture each time

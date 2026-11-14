@@ -1,0 +1,31 @@
+# --- data (MSD Task01: download with scripts/download_msd.py)
+/data/
+
+# --- training and evaluation outputs (checkpoints, predictions, logs, uploads)
+/output/
+mlruns/
+mlflow.db
+
+# --- large files that live on the Hugging Face Hub instead (scripts/hub.py)
+models/*.onnx
+web/public/cases/
+web/public/samples
+
+# --- web build
+web/node_modules/
+web/dist/
+
+# --- Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# --- editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+.pytest_cache/
+*.log

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Brain tumour NPR viewer</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #f4f1ea; font-family: system-ui, sans-serif; }
+      #app { position: fixed; inset: 0; }
+      #side { position: fixed; top: 12px; left: 12px; width: 310px; max-height: calc(100% - 24px);
+              display: flex; flex-direction: column; gap: 8px; overflow-y: auto; }
+      .card { background: #fffd; padding: 10px 14px; border-radius: 8px; font-size: 14px; line-height: 1.55; }
+      .muted { color: #666; font-size: 12.5px; line-height: 1.4; margin: 2px 0 6px; }
+      .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+      .hint { margin-top: 6px; font-size: 12px; color: #666; }
+      .badge { display: inline-block; font-size: 11px; padding: 0 6px; border-radius: 8px; margin-left: 4px;
+               background: #2a7a3b; color: #fff; vertical-align: 1px; }
+      .scores { margin-top: 6px; font-size: 13px; }
+      .scores span { display: inline-block; margin-right: 10px; }
+      #cases h3 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: #555; }
+      .case { display: block; width: 100%; text-align: left; border: 0; background: none; padding: 5px 6px;
+              border-radius: 6px; cursor: pointer; font: inherit; font-size: 13.5px; }
+      .case:hover { background: #0000000d; }
+      .case.current { background: #2a5fa81a; font-weight: 600; }
+      .case small { color: #777; font-weight: 400; }
+      #try summary { cursor: pointer; font-weight: 600; }
+      #try h4 { margin: 10px 0 2px; font-size: 13px; }
+      #try ul { margin: 4px 0; padding-left: 18px; font-size: 13px; line-height: 1.45; }
+      #try .sample { font-size: 13px; margin: 3px 0; }
+      #try .sample a { margin-left: 6px; }
+      #try .ids { display: flex; flex-wrap: wrap; gap: 3px 8px; font-size: 11.5px; color: #444;
+                  font-family: ui-monospace, monospace; margin-top: 4px; }
+      #try details details summary { font-weight: 400; font-size: 13px; color: #2a5fa8; }
+      .nav { font-size: 13.5px; padding: 7px 14px; }
+      .nav a { color: #2a5fa8; text-decoration: none; }
+      #upload [hidden] { display: none !important; } /* 'display: block' below would override it */
+      #upload .up-box { border: 2px dashed #b9b4a8; border-radius: 8px; padding: 8px 10px; margin: 5px 0;
+                        font-size: 13px; cursor: pointer; }
+      #upload .up-box:hover, #upload .up-box:focus { border-color: #8c8778; outline: none; }
+      #upload .up-box.over { border-color: #2a5fa8; background: #2a5fa810; }
+      #upload .up-box.filled { border-style: solid; border-color: #2a7a3b80; }
+      #upload .up-box small { display: block; color: #898781; font-size: 11.5px; line-height: 1.35; }
+      #upload .up-box .opt { color: #898781; font-size: 12px; }
+      #upload .up-files { font-size: 12.5px; color: #2c2c2a; margin-top: 3px; word-break: break-all; }
+      #upload .up-files small { display: inline; }
+      #upload h4 { margin: 10px 0 4px; font-size: 13px; }
+      #upload label { display: block; font-size: 12.5px; margin: 3px 0; }
+      #upload .up-models { margin: 6px 0; font-size: 12.5px; }
+      #upload .up-models small { color: #888; }
+      #upload select { font-size: 12px; }
+      #upload .up-go { margin: 6px 0 4px; padding: 5px 14px; border: 0; border-radius: 6px; background: #2a5fa8;
+                       color: #fff; font: inherit; font-size: 13px; cursor: pointer; }
+      #upload .up-go:disabled { background: #9aa9bf; cursor: default; }
+      #upload .bar { height: 6px; background: #0000001a; border-radius: 3px; overflow: hidden; }
+      #upload .bar div { height: 100%; width: 0; background: #2a5fa8; transition: width .4s; }
+      #upload .step { font-size: 12.5px; margin: 3px 0; }
+      #upload .up-error { color: #b42318; font-size: 12.5px; margin: 3px 0; }
+      #notice { font-size: 13.5px; border-left: 4px solid #2a5fa8; border-radius: 0 8px 8px 0; }
+      #notice.error { border-left-color: #b42318; }
+      #notice .bar { height: 6px; background: #0000001a; border-radius: 3px; overflow: hidden; margin-top: 6px; }
+      #notice .bar div { height: 100%; width: 0; background: #2a5fa8; transition: width .4s; }
+      .tooltip { position: fixed; display: none; pointer-events: none; background: #222d; color: #fff;
+                 padding: 6px 10px; border-radius: 6px; font-size: 13px; line-height: 1.4; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="side">
+      <div id="notice" class="card" hidden></div>
+      <div class="card nav"><b>3D viewer</b> · <a href="/models.html">Models: scores, training, speed</a></div>
+      <div id="info" class="card">Loading…</div>
+      <div id="cases" class="card" hidden></div>
+      <div id="try" class="card" hidden></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

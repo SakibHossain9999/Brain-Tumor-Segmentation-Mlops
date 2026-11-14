@@ -1,0 +1,89 @@
+{
+  "dice_wt": {
+    "mean": 0.9283,
+    "median": 0.9374,
+    "std": 0.0384,
+    "n": 340
+  },
+  "hd95_wt": {
+    "mean": 5.2134,
+    "median": 3.0,
+    "std": 8.2894,
+    "n": 340
+  },
+  "sensitivity_wt": {
+    "mean": 0.9295,
+    "median": 0.945,
+    "std": 0.0529,
+    "n": 340
+  },
+  "precision_wt": {
+    "mean": 0.9297,
+    "median": 0.9371,
+    "std": 0.0451,
+    "n": 340
+  },
+  "dice_tc": {
+    "mean": 0.8873,
+    "median": 0.9169,
+    "std": 0.0935,
+    "n": 340
+  },
+  "hd95_tc": {
+    "mean": 4.8476,
+    "median": 3.0,
+    "std": 6.1715,
+    "n": 340
+  },
+  "sensitivity_tc": {
+    "mean": 0.9131,
+    "median": 0.9392,
+    "std": 0.0774,
+    "n": 340
+  },
+  "precision_tc": {
+    "mean": 0.8727,
+    "median": 0.9099,
+    "std": 0.1169,
+    "n": 340
+  },
+  "dice_et": {
+    "mean": 0.8424,
+    "median": 0.8853,
+    "std": 0.1538,
+    "n": 340
+  },
+  "hd95_et": {
+    "mean": 8.6308,
+    "median": 1.7321,
+    "std": 44.8599,
+    "n": 340
+  },
+  "sensitivity_et": {
+    "mean": 0.8818,
+    "median": 0.9087,
+    "std": 0.1224,
+    "n": 336
+  },
+  "precision_et": {
+    "mean": 0.8294,
+    "median": 0.8673,
+    "std": 0.1578,
+    "n": 339
+  },
+  "dice_mean": 0.886,
+  "efficiency": {
+    "params_m": 62.19,
+    "gflops_per_window": 2978.5,
+    "predict_s_per_case": 0.558,
+    "peak_gpu_gb": 12.84,
+    "train_s_per_step": 1.659,
+    "train_note": "gradient checkpointing on (same results, ~25% slower)"
+  },
+  "model": "swin_unetr",
+  "split": "train",
+  "n_cases": 340,
+  "checkpoint_step": 20000,
+  "val_dice_mean": 0.8169,
+  "overlap": 0.5
+}

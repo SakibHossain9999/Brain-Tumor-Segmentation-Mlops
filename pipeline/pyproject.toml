@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brainviz"
+version = "0.1.0"
+description = "Brain tumour MRI segmentations to 3D meshes for an NPR web viewer"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.26",
+  "scipy>=1.11",
+  "nibabel>=5.2",
+  "scikit-image>=0.22",
+  "trimesh>=4.4",
+  "fast-simplification>=0.1.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+brainviz = "brainviz.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["brainviz*"]

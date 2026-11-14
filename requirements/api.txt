@@ -1,0 +1,15 @@
+# The upload service and the 3D pipeline (CPU only): what the Docker image runs.
+# torch is installed separately, from the CPU-only index (see Dockerfile / CI):
+#   pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu
+numpy==2.4.6
+scipy==1.17.1
+scikit-image==0.26.0
+nibabel==5.5.0
+trimesh==5.2.0
+fast_simplification==0.2.0
+monai==1.6.1
+onnxruntime==1.32.0
+fastapi==0.162.5
+uvicorn==0.54.0
+python-multipart==0.0.33
+huggingface_hub==2.4.0

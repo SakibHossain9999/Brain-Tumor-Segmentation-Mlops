@@ -1,0 +1,4 @@
+base: base.yaml
+model:
+  name: swin_unetr
+  use_checkpoint: true   # recompute activations in backward: much less GPU memory, ~25% slower (results unchanged)

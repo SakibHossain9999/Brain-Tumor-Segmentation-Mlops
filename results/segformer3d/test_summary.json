@@ -1,0 +1,89 @@
+{
+  "dice_wt": {
+    "mean": 0.889,
+    "median": 0.9046,
+    "std": 0.0759,
+    "n": 72
+  },
+  "hd95_wt": {
+    "mean": 8.0415,
+    "median": 4.1231,
+    "std": 10.3734,
+    "n": 72
+  },
+  "sensitivity_wt": {
+    "mean": 0.8605,
+    "median": 0.8857,
+    "std": 0.1016,
+    "n": 72
+  },
+  "precision_wt": {
+    "mean": 0.9309,
+    "median": 0.9547,
+    "std": 0.058,
+    "n": 72
+  },
+  "dice_tc": {
+    "mean": 0.8149,
+    "median": 0.8617,
+    "std": 0.1536,
+    "n": 72
+  },
+  "hd95_tc": {
+    "mean": 8.6435,
+    "median": 6.7453,
+    "std": 9.19,
+    "n": 72
+  },
+  "sensitivity_tc": {
+    "mean": 0.8057,
+    "median": 0.8745,
+    "std": 0.1898,
+    "n": 72
+  },
+  "precision_tc": {
+    "mean": 0.8656,
+    "median": 0.9045,
+    "std": 0.1097,
+    "n": 72
+  },
+  "dice_et": {
+    "mean": 0.736,
+    "median": 0.8415,
+    "std": 0.2425,
+    "n": 72
+  },
+  "hd95_et": {
+    "mean": 10.2059,
+    "median": 3.3904,
+    "std": 43.3975,
+    "n": 72
+  },
+  "sensitivity_et": {
+    "mean": 0.7881,
+    "median": 0.8883,
+    "std": 0.2564,
+    "n": 72
+  },
+  "precision_et": {
+    "mean": 0.7332,
+    "median": 0.8044,
+    "std": 0.2105,
+    "n": 71
+  },
+  "dice_mean": 0.8133,
+  "efficiency": {
+    "params_m": 4.53,
+    "gflops_per_window": 71.4,
+    "predict_s_per_case": 0.108,
+    "peak_gpu_gb": 1.91,
+    "train_s_per_step": 0.097,
+    "train_note": ""
+  },
+  "model": "segformer3d",
+  "split": "test",
+  "n_cases": 72,
+  "checkpoint_step": 24000,
+  "val_dice_mean": 0.788,
+  "overlap": 0.5
+}

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Models · Brain tumour NPR viewer</title>
+    <style>
+      html, body { margin: 0; background: #f4f1ea; color: #0b0b0b; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+      main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+      nav { font-size: 14px; margin-bottom: 18px; }
+      nav a { color: #2a5fa8; text-decoration: none; }
+      h1 { font-size: 24px; font-weight: 600; margin: 0 0 6px; }
+      h2 { font-size: 17px; font-weight: 600; margin: 34px 0 4px; }
+      p, li { font-size: 14.5px; line-height: 1.6; color: #2c2c2a; }
+      .lead { color: #52514e; margin: 0 0 18px; }
+      .sub { color: #52514e; font-size: 13.5px; margin: 0 0 10px; }
+      .cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+      .card { background: #fcfcfb; border-radius: 10px; padding: 12px 14px; box-shadow: 0 0 0 1px rgba(11,11,11,0.06); }
+      .model .name { font-weight: 600; font-size: 14.5px; }
+      .model .hero { font-size: 34px; font-weight: 600; margin: 6px 0 0; line-height: 1.1; }
+      .model .muted { color: #898781; font-size: 12.5px; }
+      .model .facts { color: #52514e; font-size: 12.5px; margin-top: 8px; line-height: 1.45; }
+      .badge { display: inline-block; font-size: 11px; font-weight: 500; padding: 0 6px; border-radius: 8px; margin-left: 6px;
+               background: #2a7a3b; color: #fff; vertical-align: 1px; }
+      #champion { font-size: 14px; line-height: 1.55; margin-top: 10px; }
+      code { font-size: 12.5px; background: #0000000a; padding: 1px 4px; border-radius: 4px; }
+      i.key { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -0.5px; }
+      table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+      th { text-align: right; font-weight: 500; color: #52514e; padding: 6px 6px; border-bottom: 1px solid #c3c2b7; }
+      td { text-align: right; padding: 6px 6px; border-bottom: 1px solid #e1e0d9; white-space: nowrap; }
+      th:first-child, td:first-child { text-align: left; white-space: nowrap; }
+      td b { font-weight: 650; }
+      .chart { position: relative; }
+      .chart svg { display: block; font-family: inherit; }
+      .legend { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13px; color: #52514e; margin: 4px 0 2px; }
+      .legend i { display: inline-block; width: 14px; height: 4px; border-radius: 2px; margin-right: 6px; vertical-align: 3px; }
+      .legend .note { color: #898781; }
+      .legend i.solid { background: #52514e; }
+      .legend i.dashed { background: repeating-linear-gradient(90deg, #52514e 0 5px, transparent 5px 9px); }
+      .panel { margin-top: 10px; }
+      .panel-title { font-size: 13.5px; font-weight: 600; margin-bottom: -6px; }
+      .tip { position: absolute; display: none; pointer-events: none; background: #fcfcfb; color: #0b0b0b; font-size: 12.5px;
+             line-height: 1.5; padding: 7px 10px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.12), 0 0 0 1px rgba(11,11,11,0.08);
+             white-space: nowrap; z-index: 2; }
+      .tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+      .tip-head { font-weight: 600; margin-bottom: 2px; }
+      .tip-note { color: #898781; }
+      details summary { cursor: pointer; color: #2a5fa8; font-size: 13.5px; margin: 6px 0; }
+      .explain { margin-top: 10px; }
+      .explain .card { margin-top: 6px; }
+      .explain h4 { font-size: 14px; font-weight: 600; margin: 12px 0 2px; }
+      .explain h4:first-child { margin-top: 2px; }
+      .explain p, .explain li { font-size: 14px; margin: 4px 0; }
+      .explain ul { padding-left: 20px; margin: 4px 0; }
+      #eff-note { color: #898781; font-size: 12.5px; margin-top: 6px; }
+      @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <nav><a href="/">← Back to the 3D viewer</a></nav>
+      <h1>Models</h1>
+      <p class="lead">Three segmentation models, trained identically and tested on the same 72 brains none of them had seen.</p>
+
+      <div id="cards" class="cards"></div>
+      <p id="champion"></p>
+
+      <h2>Test results</h2>
+      <p class="sub">Dice: overlap with the expert outline (1 = perfect). HD95: distance between predicted and true tumour edges in mm, median over brains (lower is better). Best in each column in bold.</p>
+      <div class="card" id="test-table"></div>
+
+      <h2>Dice per brain</h2>
+      <p class="sub">Test set: one Dice score per brain for each of the 72 test brains. The averages hide a spread: most brains score 0.8–0.95, a few fail. Hover a dot to see which brain it is; brains in the viewer's sample gallery open there, already comparing the model with the expert.</p>
+      <div class="card" id="box"></div>
+
+      <h2>Accuracy against speed</h2>
+      <p class="sub">Prediction time per brain on a free cloud machine (2 CPU cores), where the upload service runs.</p>
+      <div class="card" id="speed"></div>
+
+      <h2>Training</h2>
+      <p class="sub">Validation Dice, checked every 1,000 steps on 72 validation brains.</p>
+      <div class="card" id="val-curve"></div>
+      <details><summary>Show the numbers</summary><div class="card" id="val-table"></div></details>
+      <p class="sub" style="margin-top: 16px">Loss per model: training against validation, one point per 1,000 steps. The two staying close together means the models learned general patterns rather than memorising the training brains. They are not measured under identical conditions: training loss comes from random 160³ crops with augmentation, averaged while the model was still changing; validation loss from whole brains without augmentation at one moment. The table below compares the sets under identical conditions.</p>
+      <div class="card" id="loss-curve"></div>
+
+      <section id="split-section" hidden>
+        <h2>Training brains against new brains</h2>
+        <p class="sub">Did each model really learn what a tumour looks like, or did it just memorise the brains it studied? To find out, the finished model outlines three groups of brains, and we compare its average score on each. Hover a score to see it per tumour region.</p>
+        <div class="card" id="split-table"></div>
+        <details class="explain" open>
+          <summary>How to read this table</summary>
+          <div class="card">
+            <h4>The three groups of brains</h4>
+            <p>Think of the model as a student preparing for an exam.</p>
+            <ul>
+              <li><b>Training brains</b>: the practice questions, with the answers. The model learned from these: it saw each one, together with the expert's outline, many times during training.</li>
+              <li><b>Validation brains</b>: a mock exam. The model never learned from them; they were only used to decide which saved version of the model to keep (the one that scored best on them).</li>
+              <li><b>Test brains</b>: the real final exam. Not used for anything until the very end, so the model had never seen them.</li>
+            </ul>
+            <h4>The numbers</h4>
+            <ul>
+              <li>Each score is the <b>average Dice</b> when the model outlines every brain in that group. Dice measures how well the model's outline overlaps the expert's: 1 is a perfect match, 0 no overlap at all.</li>
+              <li>All three groups are scored in exactly the same way (whole brains, the same settings), so the scores can be compared directly.</li>
+              <li><b>Gap</b> = score on the training brains minus score on the test brains.</li>
+            </ul>
+            <h4>What the gap tells you</h4>
+            <ul>
+              <li><b>Small gap</b> (a few hundredths): the model does almost as well on brains it has never seen as on the ones it studied. It learned general patterns of what tumours look like, so it should work on new patients.</li>
+              <li><b>Large gap</b> (say 0.99 on training brains but 0.70 on test brains): the model memorised its training brains instead of learning. This is called <b>overfitting</b>, and such a model would disappoint on new patients.</li>
+            </ul>
+            <h4>What these results show</h4>
+            <ul id="split-findings"></ul>
+          </div>
+        </details>
+      </section>
+
+      <h2>Size and speed</h2>
+      <p class="sub">Best (smallest or fastest) in each column in bold. CPU / brain: 2 cores, like the free cloud machine the upload service runs on. Compute: per 160³ window.</p>
+      <div class="card" id="eff-table"></div>
+      <div id="eff-note"></div>
+
+      <h2>How this was measured</h2>
+      <div id="method"></div>
+    </main>
+    <script type="module" src="/src/models.ts"></script>
+  </body>
+</html>

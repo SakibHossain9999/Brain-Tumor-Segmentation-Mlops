@@ -1,0 +1,16 @@
+# keep the build context small: only code and small files go into the image
+data/
+output/
+mlruns/
+mlflow.db
+models/*.onnx
+notebooks/
+results/
+web/node_modules/
+web/dist/
+web/public/cases/
+web/public/samples
+**/__pycache__/
+.git/
+.github/
+.vscode/

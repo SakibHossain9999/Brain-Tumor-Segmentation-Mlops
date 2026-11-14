@@ -1,0 +1,89 @@
+{
+  "dice_wt": {
+    "mean": 0.8992,
+    "median": 0.922,
+    "std": 0.0845,
+    "n": 72
+  },
+  "hd95_wt": {
+    "mean": 9.9791,
+    "median": 4.0616,
+    "std": 13.9779,
+    "n": 72
+  },
+  "sensitivity_wt": {
+    "mean": 0.8925,
+    "median": 0.9208,
+    "std": 0.1027,
+    "n": 72
+  },
+  "precision_wt": {
+    "mean": 0.9137,
+    "median": 0.9394,
+    "std": 0.0901,
+    "n": 72
+  },
+  "dice_tc": {
+    "mean": 0.8326,
+    "median": 0.8849,
+    "std": 0.1577,
+    "n": 72
+  },
+  "hd95_tc": {
+    "mean": 9.1579,
+    "median": 5.5561,
+    "std": 11.9109,
+    "n": 72
+  },
+  "sensitivity_tc": {
+    "mean": 0.8545,
+    "median": 0.9077,
+    "std": 0.1591,
+    "n": 72
+  },
+  "precision_tc": {
+    "mean": 0.8364,
+    "median": 0.8953,
+    "std": 0.1763,
+    "n": 72
+  },
+  "dice_et": {
+    "mean": 0.7721,
+    "median": 0.8759,
+    "std": 0.2531,
+    "n": 72
+  },
+  "hd95_et": {
+    "mean": 16.6521,
+    "median": 2.2361,
+    "std": 61.6532,
+    "n": 72
+  },
+  "sensitivity_et": {
+    "mean": 0.8082,
+    "median": 0.9027,
+    "std": 0.2478,
+    "n": 71
+  },
+  "precision_et": {
+    "mean": 0.7899,
+    "median": 0.8786,
+    "std": 0.2185,
+    "n": 71
+  },
+  "dice_mean": 0.8346,
+  "efficiency": {
+    "params_m": 4.7,
+    "gflops_per_window": 578.2,
+    "predict_s_per_case": 0.217,
+    "peak_gpu_gb": 2.95,
+    "train_s_per_step": 0.334,
+    "train_note": ""
+  },
+  "model": "segresnet",
+  "split": "test",
+  "n_cases": 72,
+  "checkpoint_step": 15000,
+  "val_dice_mean": 0.8151,
+  "overlap": 0.5
+}

@@ -1,0 +1,31 @@
+{
+  "registered_model": "brain-tumour-seg",
+  "champion": "segresnet",
+  "models": {
+    "segformer3d": {
+      "display_name": "SegFormer3D",
+      "version": 1,
+      "onnx": "segformer3d.onnx",
+      "onnx_sha256": "cf92e0de3e016539f6f407f1e8e3906d0b73dd12bfc5a57a12ef9ff41463965c",
+      "test_dice_mean": 0.8133,
+      "cpu_s_per_case_2_threads": 1.4
+    },
+    "segresnet": {
+      "display_name": "SegResNet",
+      "version": 2,
+      "onnx": "segresnet.onnx",
+      "onnx_sha256": "5304a90200c56e269d4f072f26da43a03cf24c138c8b74a466263a2d7a8971d7",
+      "test_dice_mean": 0.8346,
+      "cpu_s_per_case_2_threads": 7.1
+    },
+    "swin_unetr": {
+      "display_name": "Swin UNETR",
+      "version": 3,
+      "onnx": "swin_unetr.onnx",
+      "onnx_sha256": "318109920a883268503418a6eccf58bf35d1623fc148265f059741cf512e5c38",
+      "test_dice_mean": 0.8353,
+      "cpu_s_per_case_2_threads": 31.3
+    }
+  },
+  "champion_reason": "Ties Swin UNETR on test Dice (0.835 vs 0.835, Wilcoxon p=0.42) at 13x fewer parameters, 4x faster on CPU and 4x less GPU memory"
+}
