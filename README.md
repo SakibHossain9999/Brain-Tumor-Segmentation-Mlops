@@ -134,34 +134,9 @@ per-brain scores: `results/<model>/test_per_case.csv` · interactive charts: the
 
 ## How it all fits together
 
-```mermaid
-flowchart LR
-    subgraph GPU["Training machine (GPU)"]
-        D[(MSD Task01<br/>484 labelled brains)] --> S[make_split.py<br/>340 / 72 / 72]
-        S --> T[train.py<br/>3 models, same settings]
-        T -->|metrics, curves,<br/>checkpoints| M[(MLflow<br/>tracking)]
-        T --> E[evaluate.py<br/>test set + Wilcoxon]
-        E --> X[export_onnx.py<br/>PyTorch to ONNX]
-        X --> R[register.py<br/>registry + champion]
-        R --> M
-    end
-    subgraph HUB["Hugging Face Hub"]
-        H[(ONNX models<br/>sample brains<br/>gallery cases)]
-    end
-    subgraph GH["GitHub"]
-        C[code + results] --> CI[Actions: tests, web build,<br/>Docker build + end-to-end test]
-        CI --> G[(GHCR image)]
-    end
-    R -->|scripts/hub.py upload| H
-    H -->|downloaded at build| CI
-    G --> APP
-    subgraph APP["Container (2 CPUs, 16 GB)"]
-        API[FastAPI upload service<br/>ONNX Runtime on CPU] --> P[brainviz pipeline<br/>meshes + volumes]
-        P --> V[three.js viewer]
-    end
-    U((User)) -->|upload scans| API
-    V -->|3D result| U
-```
+<p align="center"><img src="docs/architecture.svg" alt="Pipeline: training, evaluation and registration on a GPU machine (row 1), then the Hugging Face Hub, GitHub Actions, the container, the API, the 3D pipeline and the viewer (row 2)" width="100%"></p>
+
+<sub>Diagram source: <code>docs/make_architecture.py</code></sub>
 
 **In words:**
 
@@ -203,6 +178,7 @@ flowchart LR
 ├── splits/                 the fixed data split + dataset fingerprints
 ├── models/                 model metadata (*.json); the *.onnx files live on the Hugging Face Hub
 ├── notebooks/              first look at the dataset
+├── docs/                   the pipeline diagram (architecture.svg) and the script that draws it
 ├── requirements/           pinned package versions (api.txt for serving, train.txt for training)
 ├── Dockerfile              one image: viewer + API + models
 └── .github/workflows/ci.yml
@@ -326,6 +302,7 @@ them (zones, sizes, which segmentation is the default, scores if known).
 | `models/<model>.json` | ONNX input/output spec, training config, checkpoint step, validation/test Dice, ONNX-vs-PyTorch agreement, CPU times |
 | `models/manifest.json` | registry snapshot: champion, reason, versions, checksums |
 | `notebooks/01_explore_data.ipynb` | first look at one case: the four scans, the label values, the WT/TC/ET regions, and a check of which label number is the enhancing tumour (brightest on the contrast scan) |
+| `docs/architecture.svg`, `docs/make_architecture.py` | the two-row pipeline diagram above, and the Python script that draws it (edit the script, rerun it to update the picture) |
 | `requirements/api.txt` | pinned packages for serving (CPU) |
 | `requirements/train.txt` | adds training, MLflow, ONNX export and test packages |
 | `Dockerfile`, `.dockerignore` | the container image (see Stage 7) |
