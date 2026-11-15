@@ -561,8 +561,9 @@ cd brain-npr
 bash scripts/setup_machine.sh
 ```
 
-It needs conda, git and Node.js 22, and asks for a Hugging Face login if you aren't logged in (the training backup
-is private). It skips anything already present, and finishes by running the unit tests.
+It needs conda, git and Node.js 22. Step 4 restores the private training backup only for its owner (logged in to
+Hugging Face); for anyone else it is skipped, and the app still works. It skips anything already present, and
+finishes by running the unit tests.
 
 | Step | What | From |
 |---|---|---|

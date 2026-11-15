@@ -53,10 +53,11 @@ fi
 
 step "2/6 Hugging Face login"
 if ! hf auth whoami >/dev/null 2>&1; then
-  echo "Not logged in. Paste a Hugging Face token (read access is enough) when asked."
-  hf auth login
+  echo "Not logged in. Only needed for the private training backup (its owner); the public files need no login."
+  echo "Paste a Hugging Face token to log in, or just press Enter to skip."
+  hf auth login || echo "continuing without a Hugging Face login"
 fi
-hf auth whoami | tail -1
+hf auth whoami 2>/dev/null | tail -1 || true
 
 step "3/6 Models, sample brains and gallery (public repo $PUBLIC_REPO)"
 python scripts/hub.py download --repo "$PUBLIC_REPO"
@@ -65,6 +66,9 @@ ln -sfn ../../output/samples web/public/samples   # the viewer offers the sample
 step "4/6 Training backup (private repo $BACKUP_REPO)"
 if [ "$SKIP_BACKUP" = 1 ]; then echo "skipped"
 elif [ -e mlflow.db ] || [ -e mlruns ]; then echo "mlflow.db / mlruns already here: skipped (move them away to restore)"
+elif ! python -c "from huggingface_hub import HfApi; HfApi().repo_info('$BACKUP_REPO')" >/dev/null 2>&1; then
+  echo "skipped: this Hugging Face account can't see the private backup (only its owner can)."
+  echo "Everything needed to run the app is already here; the backup only matters for continuing training."
 else python scripts/backup.py restore --repo "$BACKUP_REPO" --to .
 fi
 
