@@ -125,10 +125,15 @@ jobs:
           node-version: "22"
           cache: npm
           cache-dependency-path: web/package-lock.json
-      - name: Gallery brains and sample downloads from the Hugging Face Hub
+      - name: Gallery brains, sample downloads and the in-browser models from the Hugging Face Hub
         run: |
           pip install huggingface_hub==2.4.0
-          python scripts/hub.py download --repo "$HF_REPO" --what cases samples --to . --samples-dir web/public/samples
+          python scripts/hub.py download --repo "$HF_REPO" --what models cases samples --to . --samples-dir web/public/samples
+          # the website runs the two models small enough for a browser (Swin UNETR is local-only)
+          mkdir -p web/public/models
+          cp models/manifest.json models/segresnet.onnx models/segresnet.json \
+             models/segformer3d.onnx models/segformer3d.json web/public/models/
+          cp splits/msd_fingerprints.json web/public/data/fingerprints.json   # recognise dataset brains
       - name: Build the website
         working-directory: web
         run: npm ci && npm run build

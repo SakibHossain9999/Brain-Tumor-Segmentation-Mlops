@@ -29,3 +29,5 @@ __pycache__/
 
 .pytest_cache/
 *.log
+web/public/models/
+web/public/data/fingerprints.json

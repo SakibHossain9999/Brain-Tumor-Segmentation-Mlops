@@ -49,6 +49,7 @@ An end-to-end project that takes brain MRI scans, finds the tumour in 3D, and sh
 
 | Where | What's there |
 |---|---|
+| [**Live website**](https://sakibhossain9999.github.io/Brain-Tumor-Segmentation-Mlops/) | The 3D viewer, the sample gallery and the Models page. Upload your own scans (and, optionally, the expert outline): SegResNet and SegFormer3D run **in your browser**, so the scans never leave your computer. All 3 models when you [run it locally](#run-it-locally) |
 | **GitHub** (this repo) | All code, results, tests, Dockerfile and the CI/CD pipeline; the built container image under *Packages* |
 | [**Hugging Face: models and demo data**](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-mlops) (public) | The three ONNX models with their specs and scores, the 4 sample brains to try the upload, and the 6 gallery brains for the 3D viewer. Docker and CI download from here |
 | [**Hugging Face: training backup**](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-training) (public) | PyTorch checkpoints, the full MLflow history and model registry, test predictions and logs, restorable with `scripts/backup.py` |
@@ -101,13 +102,16 @@ are worked out from the regions (`edema = WT − TC`, `non-enhancing = TC − ET
 
 Held-out **test set of 72 brains** that no model saw during training or model selection.
 
-| Model | Dice WT | Dice TC | Dice ET | **Mean Dice** | HD95 ET (mm) | Parameters | CPU time per brain* | GPU memory (training) | Training time |
-|---|---|---|---|---|---|---|---|---|---|
-| **SegResNet** ★ champion | 0.899 | 0.833 | 0.772 | **0.835** | 16.7 | 4.7 M | 7.1 s | 2.95 GB | 2.8 h |
-| Swin UNETR | 0.898 | 0.829 | 0.779 | **0.835** | 16.4 | 62.2 M | 31.3 s | 12.8 GB | 13.8 h |
-| SegFormer3D | 0.889 | 0.815 | 0.736 | **0.813** | 10.2 | 4.5 M | 1.4 s | 1.9 GB | 0.8 h |
+| Model | Dice WT | Dice TC | Dice ET | **Mean Dice** | HD95 ET (mm) | Parameters | CPU time per brain* | Runs in a browser?† | GPU memory (training) | Training time |
+|---|---|---|---|---|---|---|---|---|---|---|
+| **SegResNet** ★ champion | 0.899 | 0.833 | 0.772 | **0.835** | 16.7 | 4.7 M | 7.1 s | ✓ | 2.95 GB | 2.8 h |
+| Swin UNETR | 0.898 | 0.829 | 0.779 | **0.835** | 16.4 | 62.2 M | 31.3 s | ✗ | 12.8 GB | 13.8 h |
+| SegFormer3D | 0.889 | 0.815 | 0.736 | **0.813** | 10.2 | 4.5 M | 1.4 s | ✓ | 1.9 GB | 0.8 h |
 
-\* ONNX Runtime, 2 CPU threads (the size of a free Hugging Face Space). Training on one NVIDIA RTX A6000 (48 GB).
+\* ONNX Runtime, 2 CPU threads (a small server). Training on one NVIDIA RTX A6000 (48 GB).
+† On the website, uploads run in the visitor's browser (ONNX Runtime Web). Swin UNETR needs about 12 GB of memory
+while it runs, more than a browser allows (about 4 GB), so it runs only in the local app. See
+[Stage 6](#stage-6-the-3d-viewer).
 
 **Statistics** (Wilcoxon signed-rank test on per-brain mean Dice, paired by brain):
 - SegResNet vs Swin UNETR: **p = 0.42**, no real difference.
@@ -255,9 +259,17 @@ them (zones, sizes, which segmentation is the default, scores if known).
 |---|---|---|
 | `index.html` | Viewer page | layout, side panel (display, segmentation, comparison, slice controls), sample gallery, "Try your own scans" upload box |
 | `models.html` | Models page | model cards, test table, charts, method notes |
-| `src/main.ts` | Viewer logic | three.js scene and camera; loads a bundle; segmentation dropdown (expert + each model, or "run another model" for uploads); expert-vs-model comparison (missed tumour in blue, extra tumour in orange, expert outline in grey, each switchable); MRI slice with brightness/contrast; shareable links (`?case=…&seg=…&cmp=…&scan=…&style=…&slice=…&zoom=…` or `?job=…`); upload with two drop boxes (scans, label), progress bar and job polling |
+| `src/main.ts` | Viewer logic | three.js scene and camera; loads a bundle; segmentation dropdown (expert + each model, or "run another model" for uploads); expert-vs-model comparison (missed tumour in blue, extra tumour in orange, expert outline in grey, each switchable); MRI slice with brightness/contrast; shareable links (`?case=…&seg=…&cmp=…&scan=…&style=…&slice=…&zoom=…` or `?job=…`); upload with two drop boxes (scans, label), progress bar and job polling; picks server or in-browser mode (`?job=…` / `?local=1`) |
 | `src/npr.ts` | Non-photorealistic rendering | toon shading with outlines; pencil hatching (triplanar strokes whose density follows the lighting, adjustable spacing); realistic style |
 | `src/slice.ts` | MRI slice plane | decodes a gzip volume, shows one slice in 3D at the chosen depth, `setLevels(brightness, contrast)` |
+| `src/browser/nifti.ts` | Reading NIfTI files in the browser | gzip, header, scaling, sform / qform affine, `toCanonical` (like nibabel's `as_closest_canonical`) |
+| `src/browser/case.ts` | Uploaded files → a checked case | the server's upload checks and messages, label numbering, `scanHash` (same fingerprints as `ml/fingerprint.py`) |
+| `src/browser/infer.ts` | Prediction and scores in the browser | crop, normalise, MONAI-style 160³ sliding window, `regionScores` (Dice, sensitivity, precision, HD95 via a Euclidean distance transform) |
+| `src/browser/mesh.ts` | 3D surfaces in the browser | brain mask, Gaussian blur, surface nets, Taubin smoothing, a minimal `.glb` writer |
+| `src/browser/bundle.ts` | Assembles a result the viewer can open | brain, tumour zones, missed / extra, scan volumes, `meta` (same format as the server's bundle) |
+| `src/browser/worker.ts` | Runs everything in a Web Worker | ONNX Runtime Web sessions, progress messages |
+| `src/browser/client.ts` | The page's side | which models run here, starting the worker, keeping the result in IndexedDB |
+| `public/coi-serviceworker.min.js` | Multi-threading on GitHub Pages | adds the cross-origin isolation headers GitHub Pages can't send (MIT, gzuidhof/coi-serviceworker) |
 | `src/charts.ts` | Small SVG chart library (no dependencies) | `lineChart` (training curves, best-checkpoint markers, crosshair), `boxChart` (per-brain Dice with outliers linking to the viewer), `scatterChart` (accuracy vs speed, log axis), `legend` |
 | `src/models.ts` | Models page logic | reads `public/data/models.json`, draws the test table, box plot, accuracy-vs-speed chart, validation Dice and loss curves, train/val/test table with a plain-language explanation, efficiency table |
 | `public/data/models.json` | Data for the Models page | generated by `scripts/build_models_page.py` |
@@ -396,16 +408,49 @@ Open the site and you get:
 - **3D view:** a translucent brain with the tumour's three zones inside. Styles: **toon** (flat colours with outlines),
   **hatching** (pencil-like strokes, denser in shadow, adjustable spacing) and **realistic**.
 - **Segmentation menu:** the expert outline or any of the three models; for uploads, models not yet run appear as
-  "<model>: run it (about N s)" options.
+  "<model>: run it (about N s)" options (on the website, Swin UNETR appears as "only when run locally", with why).
 - **Comparison with the expert:** tumour the model **missed** in blue, tumour it **added** in orange, and the expert's
   outline in grey, each switchable, with the brain's Dice scores.
 - **MRI slice:** any of the four scans, at any depth, with brightness and contrast.
 - **Shareable links:** every view is a URL (`?case=BRATS_075&seg=segresnet&cmp=1&scan=t1c&style=hatching&slice=80`).
-- **Try your own scans:** drop the scans in one box and an optional expert outline in the other, pick models, upload,
-  and watch progress; or download one of the four sample brains to try.
+- **Try your own scans:** drop the scans in one box and an optional expert outline in the other, pick models, and
+  watch progress; or download one of the four sample brains to try. Where the models run depends on how the viewer
+  is opened (below).
 - **Models page:** model cards, the test table, per-brain box plot (click an outlier to open that brain), accuracy vs
   speed, validation Dice and loss curves, the train / validation / test table explained in plain language, and
   efficiency numbers.
+
+### Two ways uploads run
+
+The viewer checks whether an upload service is running next to it, and picks the mode by itself:
+
+| | Local app (Docker or Python) | Website (GitHub Pages, no server) |
+|---|---|---|
+| Where the models run | the FastAPI service on your machine | **in your browser** (ONNX Runtime Web, WebAssembly, in a Web Worker) |
+| Models for uploads | SegResNet, SegFormer3D, Swin UNETR | SegResNet, SegFormer3D (Swin UNETR is listed with the reason and a link to run locally) |
+| Expert outline, comparison view, Dice / HD95 / sensitivity / precision | ✓ | ✓ |
+| Recognising dataset brains (fingerprints) | ✓ | ✓ |
+| "Run another model" on the same upload | ✓ | ✓ |
+| Where the scans go | to your own local service | nowhere: they never leave the browser |
+| Result kept | 6 hours, shareable link (`?job=…`) | in that browser only, latest upload (`?local=1`) |
+
+The browser version is a TypeScript port of the server's steps (`web/src/browser/`): reading NIfTI files and turning
+them to the standard orientation, the same upload checks and messages, cropping and normalising, the 160³ sliding
+window with 50% overlap, the scores, the fingerprints, and building the 3D files (with surface nets instead of
+marching cubes). On GitHub Pages a small service worker (`coi-serviceworker`) enables multi-threading.
+
+**How the in-browser version was tested** (on the training machine's CPU, 4 threads):
+
+- **Engine check**, one real 160³ window, ONNX Runtime Web vs the server's ONNX Runtime: SegResNet 5.6 s per window,
+  1.8 GB peak memory, same masks (Dice 0.998); SegFormer3D 1.0 s, 1.0 GB, identical masks (1.000); Swin UNETR ran out
+  of memory while loading. On a single thread: 17.4 s and 3.0 s per window. A typical brain needs 2 windows.
+- **Full website test** in headless Chrome, served from a sub-folder exactly as on GitHub Pages, with no server:
+  - BRATS_075 (one MSD file + outline), both models: **25 s in total** (SegResNet 13.1 s, SegFormer3D 2.8 s).
+    SegFormer3D's tumour volumes and all scores, HD95 included, are identical to the server's; SegResNet's mean Dice is
+    0.8760 vs 0.8761, HD95 identical.
+  - BRATS_156 as 4 BraTS-style files stored in the other orientation (LPS): recognised as BRATS_156 from its
+    fingerprints (so every voxel was put back in place), Dice within 0.0015 of the server for every region.
+- Full uploads with all 3 models, Swin UNETR included, are tested on every push in the Docker container (Stage 7).
 
 ## Stage 7: tests, Docker and CI/CD
 
@@ -415,7 +460,7 @@ Open the site and you get:
 1. `node:22-slim` builds the viewer into static files.
 2. `python:3.11-slim` installs CPU-only PyTorch and the pinned `requirements/api.txt`, copies only the code the
    service needs, downloads the models, samples and gallery from the Hugging Face Hub, runs as a non-root user
-   (uid 1000, as Hugging Face Spaces require), exposes port 7860 and has a health check.
+   (uid 1000), exposes port 7860 and has a health check.
 
 **GitHub Actions** (`.github/workflows/ci.yml`), on every push and pull request:
 
@@ -424,6 +469,7 @@ Open the site and you get:
 | `tests` | install CPU PyTorch + pinned packages → `pytest` |
 | `web` | `npm ci` → TypeScript type check → production build |
 | `docker` (after both pass) | build the image (layer cache in GitHub) → start it with `--memory 16g --cpus 2`, the same limits as the deployment target → wait for `/api/health` → download the sample brains → run `api/test_api.py` against the container → check the viewer pages are served → report memory use → on `main`, push the image to GitHub Container Registry tagged `latest` and with the commit hash |
+| `pages` (after `docker`, on `main`) | download the gallery, samples and the two in-browser models from the Hugging Face Hub → build the website → publish it to GitHub Pages |
 
 So a change that breaks training-time preprocessing, the upload checks, the 3D pipeline, the viewer build, the
 image, or memory limits is caught before it is deployed.
@@ -441,7 +487,15 @@ image, or memory limits is caught before it is deployed.
 - **Scores on training brains look better than they are:** the service warns when an upload is a training brain.
 - **Swin UNETR training:** run with activation checkpointing after an out-of-memory error; this does not change the
   maths, only speed.
-- **CPU only in deployment:** Swin UNETR takes ~30 s per brain on 2 CPU cores.
+- **The website runs 2 of the 3 models:** Swin UNETR can't run in a browser (it needs about 12 GB of memory while it
+  runs; browsers allow about 4 GB). On the website its results are shown for the gallery brains; to use it on your
+  own scans, run the app locally.
+- **In-browser speed depends on the visitor's computer:** SegResNet took about 13 s per brain with 4 threads on the
+  training machine's CPU; a typical laptop may be slower, and browsers without multi-threading about 3x slower.
+  In-browser results are kept only in that browser (the latest upload).
+- **Outline numbering:** MSD and BraTS number the tumour zones differently. A label with a 4 is BraTS; otherwise the
+  numbering follows the upload format (one MSD file -> MSD, 4 files -> BraTS) unless the uploader picks it.
+- **CPU only:** in the local app, Swin UNETR takes ~30 s per brain on 2 CPU cores.
 
 ---
 
@@ -463,7 +517,9 @@ image, or memory limits is caught before it is deployed.
 
 ## Run it locally
 
-You need about 6 GB of free disk space and 8 GB of RAM (16 GB to also run Swin UNETR). No GPU is needed.
+Running locally gives you everything the website has, plus **Swin UNETR for your own scans** (all 3 models) and
+results you can share by link. You need about 6 GB of free disk space and 8 GB of RAM (16 GB to also run Swin
+UNETR). No GPU is needed.
 The models, sample brains and 3D gallery (~430 MB) are downloaded automatically from the
 [Hugging Face Hub](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-mlops).
 

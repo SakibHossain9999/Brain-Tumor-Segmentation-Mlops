@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Brain tumour NPR viewer</title>
+    <!-- lets the in-browser models use several processor cores on hosts that can't send the needed headers
+         (GitHub Pages): a tiny service worker adds them. MIT licence, github.com/gzuidhof/coi-serviceworker -->
+    <script src="coi-serviceworker.min.js"></script>
     <style>
       html, body { margin: 0; height: 100%; background: #f4f1ea; font-family: system-ui, sans-serif; }
       #app { position: fixed; inset: 0; }
@@ -47,6 +50,11 @@
       #upload label { display: block; font-size: 12.5px; margin: 3px 0; }
       #upload .up-models { margin: 6px 0; font-size: 12.5px; }
       #upload .up-models small { color: #888; }
+      #upload .up-mode { border-radius: 6px; padding: 5px 8px; margin: 4px 0 6px; font-size: 12px; line-height: 1.35; }
+      #upload .up-mode.browser { background: #e6f4ea; color: #1e5631; }
+      #upload .up-mode.server { background: #e8f0fb; color: #1f4f8a; }
+      #upload .up-local { color: #888; margin: 3px 0; }
+      #upload .up-note { color: #6b6a65; font-size: 11.5px; line-height: 1.4; margin: 1px 0 0 0; }
       #upload select { font-size: 12px; }
       #upload .up-go { margin: 6px 0 4px; padding: 5px 14px; border: 0; border-radius: 6px; background: #2a5fa8;
                        color: #fff; font: inherit; font-size: 13px; cursor: pointer; }

@@ -4,6 +4,8 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { ghostMaterial, hatchMaterial, inkMaterial, outlineMaterial, setHatchColor, toonMaterial } from "./npr";
 import { AXIS_INDEX, createSlice, fetchScan, makeVolumeTexture, type SliceAxis } from "./slice";
+import { browserModels, fileUrls, loadResult, runInBrowser, saveResult, type BrowserModel, type Saved } from "./browser/client";
+import type { Inputs } from "./browser/case";
 
 // ---------------------------------------------------------------- what the bundle files contain
 type Zone = { name: string; color: [number, number, number]; volume_ml: number; present: boolean };
@@ -63,6 +65,15 @@ const URL_PARAMS = new URLSearchParams(location.search);
 // the upload service: the same server by default (VITE_API_BASE can point a separately hosted site at it)
 const API_BASE = (import.meta as unknown as { env?: Record<string, string> }).env?.VITE_API_BASE ?? "";
 const JOB = URL_PARAMS.get("job"); // ?job=<id>: show the result of an upload
+const LOCAL = URL_PARAMS.get("local") === "1"; // ?local=1: show the result computed in this browser
+const RUN_LOCALLY_URL = "https://github.com/SakibHossain9999/Brain-Tumor-Segmentation-Mlops#run-it-locally";
+let localSaved: Saved | undefined; // the in-browser result being shown (?local=1)
+let localFiles: Map<string, string> | null = null; // its files, as blob URLs
+/** Where a bundle file is: on a server, or (an in-browser result) in this browser's memory. */
+const fileUrl = (f: string) => localFiles?.get(f) ?? `${base}/${f}`;
+/** Rough time per brain in a browser: about 3x the server's 2-core time (measured: see the README). */
+const browserSeconds = (m: BrowserModel) => Math.round((m.cpuSeconds ?? 10) * 3);
+const modelLabels = new Map<string, string>(); // model name -> display name (for messages)
 /** A link setting if it is one of the allowed values, else the default. */
 function pick(value: string | null, allowed: string[], fallback: string) {
   return value && allowed.includes(value) ? value : fallback;
@@ -216,7 +227,7 @@ function comparing(): boolean {
 /** Keep the link in sync, so it always reopens this exact view. */
 function updateUrl() {
   const p = new URLSearchParams(location.search);
-  if (!JOB) p.set("case", caseId);
+  if (!JOB && !LOCAL) p.set("case", caseId);
   p.set("seg", params.seg);
   if (comparing()) p.set("cmp", params.compareRegion);
   else p.delete("cmp");
@@ -453,18 +464,40 @@ function renderTry(info: TryInfo) {
 /** The upload form: two boxes (scans, optional outline) to drop files on or click, the models, progress. */
 async function setupUpload(el: HTMLElement) {
   type ApiModel = { name: string; display_name: string; cpu_s_per_case_2_threads: number | null; champion: boolean };
-  let models: ApiModel[];
+  type Choice = { name: string; label: string; champion: boolean; seconds: number | null; localOnly?: boolean };
+  // Where the models run: the upload service when there is one (the local app: all models), otherwise right
+  // here in the browser (the website: the models small enough for a browser).
+  let engine: "server" | "browser" = "server";
+  let models: Choice[];
+  let browser: Awaited<ReturnType<typeof browserModels>> = null;
   try {
     const r = await fetch(`${API_BASE}/api/models`);
     if (!r.ok) throw new Error(String(r.status));
-    models = ((await r.json()) as { models: ApiModel[] }).models;
+    models = ((await r.json()) as { models: ApiModel[] }).models.map((m) =>
+      ({ name: m.name, label: m.display_name, champion: m.champion, seconds: m.cpu_s_per_case_2_threads }));
   } catch {
-    el.innerHTML = `<div class="muted">The upload service isn't running here, so uploading is off. Everything else works.</div>`;
-    return;
+    browser = await browserModels();
+    if (!browser || typeof Worker === "undefined" || typeof indexedDB === "undefined") {
+      el.innerHTML = `<div class="muted">The upload service isn't running here, so uploading is off. Everything else works.</div>`;
+      return;
+    }
+    engine = "browser";
+    models = [...browser.runnable.map((m) => ({ name: m.name, label: m.label, champion: !!m.champion, seconds: browserSeconds(m) })),
+      ...browser.localOnly.map((m) => ({ ...m, seconds: null, localOnly: true }))];
   }
+  const modelRow = (m: Choice) => m.localOnly
+    ? `<div class="up-local"><span>${m.label}</span> <small>· not in the browser</small>` +
+      `<div class="up-note">Too large for a web browser: it needs about 12 GB of memory while it runs. Its results are in ` +
+      `the sample gallery. To use it on your own scans, <a href="${RUN_LOCALLY_URL}" target="_blank" rel="noopener">run the ` +
+      `app locally</a>, where all 3 models work.</div></div>`
+    : `<label><input type="checkbox" value="${m.name}" ${m.champion ? "checked" : ""}> ${m.champion ? "★ " : ""}${m.label}` +
+      ` <small>about ${Math.max(1, Math.round(m.seconds ?? 10))} s</small></label>`;
   const SLOTS: [string, string][] = [["flair", "FLAIR"], ["t1", "T1"], ["t1ce", "T1 + contrast"], ["t2", "T2"]];
   el.innerHTML =
     `<h4>Upload</h4>` +
+    (engine === "browser"
+      ? `<div class="up-mode browser">Runs in your browser: your scans never leave your computer.</div>`
+      : `<div class="up-mode server">Runs on the upload service: all models available.</div>`) +
     `<div class="up-box" data-box="scans" tabindex="0"><b>Scans</b>` +
     `<small>drop 1 file with all 4 scans (MSD) or 4 files: FLAIR, T1, T1 + contrast, T2 (BraTS), or click to choose</small>` +
     `<div class="up-files"></div></div>` +
@@ -476,13 +509,14 @@ async function setupUpload(el: HTMLElement) {
     `<label class="up-fmt" hidden>Outline numbering <select>` +
     `<option value="auto">detect</option><option value="msd">MSD: 1 swelling, 2 core, 3 active</option>` +
     `<option value="brats">BraTS: 1 core, 2 swelling, 3 or 4 active</option></select></label>` +
-    `<div class="up-models"><div>Models</div>${models.map((m) =>
-      `<label><input type="checkbox" value="${m.name}" ${m.champion ? "checked" : ""}> ${m.champion ? "★ " : ""}${m.display_name}` +
-      ` <small>about ${Math.max(1, Math.round(m.cpu_s_per_case_2_threads ?? 10))} s</small></label>`).join("")}</div>` +
+    `<div class="up-models"><div>Models</div>${models.map(modelRow).join("")}</div>` +
     `<button class="up-go">Segment</button>` +
     `<div class="up-progress" hidden><div class="bar"><div></div></div><div class="step"></div></div>` +
     `<div class="up-error"></div>` +
-    `<div class="muted">Uploaded scans are kept with the result for about 6 hours, so you can run more models on them, then both are deleted.</div>`;
+    (engine === "browser"
+      ? `<div class="muted">It runs on your computer's processor, so it takes a little while. The result is kept in this ` +
+        `browser (the latest upload only), so you can run the other model on it afterwards.</div>`
+      : `<div class="muted">Uploaded scans are kept with the result for about 6 hours, so you can run more models on them, then both are deleted.</div>`);
 
   const $q = <T extends Element>(s: string) => el.querySelector<T>(s)!;
   const error = (msg: string) => ($q<HTMLElement>(".up-error").textContent = msg);
@@ -591,6 +625,7 @@ async function setupUpload(el: HTMLElement) {
   button.addEventListener("click", async () => {
     error("");
     if (!scans) return error("Add the scans first (drop them on the Scans box, or click it).");
+    if (engine === "browser") return runHere();
     const form = new FormData();
     if (scans.mode === "one") form.append("scans", scans.file);
     else for (const [s] of SLOTS) form.append(s, scans.files[s]);
@@ -647,12 +682,46 @@ async function setupUpload(el: HTMLElement) {
       error(e instanceof Error ? e.message : String(e));
     }
   });
+
+  /** The website: run the chosen models in this browser (a Web Worker), keep the result here, then show it. */
+  async function runHere() {
+    const chosen = [...el.querySelectorAll<HTMLInputElement>(".up-models input:checked")].map((c) => c.value);
+    if (!chosen.length) return error("Pick at least one model.");
+    const specs = browser!.runnable.filter((m) => chosen.includes(m.name));
+    const progress = $q<HTMLElement>(".up-progress");
+    const bar = $q<HTMLElement>(".up-progress .bar div");
+    const step = $q<HTMLElement>(".up-progress .step");
+    const show = (text: string, p: number) => {
+      step.textContent = text;
+      bar.style.width = `${Math.max(2, p * 100)}%`;
+    };
+    button.disabled = true;
+    progress.hidden = false;
+    show("Reading the files…", 0.01);
+    try {
+      const s = scans!;
+      const inputs: Inputs = {
+        scans: s.mode === "one" ? { one: await s.file.arrayBuffer() }
+          : { four: Object.fromEntries(await Promise.all(SLOTS.map(async ([k]) => [k, await s.files[k].arrayBuffer()] as const))) },
+        label: label ? await label.arrayBuffer() : undefined,
+        labelFormat: $q<HTMLSelectElement>(".up-fmt select").value as Inputs["labelFormat"],
+      };
+      const result = await runInBrowser(inputs, specs, show);
+      show("Saving the result in this browser…", 1);
+      await saveResult({ inputs, ...result, savedAt: Date.now() });
+      location.href = "?local=1";
+    } catch (e) {
+      progress.hidden = true;
+      button.disabled = false;
+      error(e instanceof Error ? e.message : String(e));
+    }
+  }
 }
 
 /** Load one segmentation's tumour meshes (once) and give them the shared zone looks. */
 async function loadSegmentation(source: string) {
   if (segGroups.has(source) || !meta) return;
-  const gltf = await loader.loadAsync(`${base}/${meta.segmentations[source].file}`);
+  const gltf = await loader.loadAsync(fileUrl(meta.segmentations[source].file));
   const group = gltf.scene;
   group.traverse((obj) => {
     if (!(obj instanceof THREE.Mesh) || !zoneStyles.has(obj.name)) return;
@@ -670,7 +739,7 @@ async function loadSegmentation(source: string) {
 async function loadDiff(source: string) {
   const diff = meta?.segmentations[source]?.diff;
   if (diffGroups.has(source) || !diff?.file) return;
-  const group = (await loader.loadAsync(`${base}/${diff.file}`)).scene;
+  const group = (await loader.loadAsync(fileUrl(diff.file))).scene;
   // collect first, then add outlines: adding children while walking the tree would visit them too
   const meshes: THREE.Mesh[] = [];
   group.traverse((obj) => {
@@ -701,7 +770,7 @@ function notice(html: string, kind: "info" | "error" = "info", sticky = false) {
 /** The dropdown changed: show it, explain why it can't be shown, or run the model first. */
 async function onSegChange() {
   const choice = params.seg;
-  if (choice === NO_EXPERT || choice.startsWith("run:")) {
+  if (choice === NO_EXPERT || choice.startsWith("run:") || choice.startsWith("localonly:")) {
     params.seg = shownSeg; // keep showing what was there
     segCtrl?.updateDisplay();
   }
@@ -709,6 +778,14 @@ async function onSegChange() {
     notice("<b>No expert outline for this upload.</b> Only the scans were uploaded, so there is no expert outline " +
       "to show, and no scores. To compare the models with an expert, upload the scans again together with " +
       "the outline (label) file.", "error");
+    return;
+  }
+  if (choice.startsWith("localonly:")) {
+    const label = modelLabels.get(choice.slice(10)) ?? "This model";
+    notice(`<b>${label} runs only in the local app.</b> It needs about 12 GB of memory while it works, more than a web ` +
+      "browser allows, so this website can't run it on your scans. Its results are in the sample gallery. To use it on " +
+      `your own scans, <a href="${RUN_LOCALLY_URL}" target="_blank" rel="noopener">run the app locally</a>: all 3 models work there.`,
+    "error");
     return;
   }
   if (choice.startsWith("run:")) return runExtraModel(choice.slice(4));
@@ -724,6 +801,7 @@ async function runExtraModel(name: string) {
   runningModel = name;
   const bar = (p: number, text: string) =>
     notice(`${text}<div class="bar"><div style="width: ${Math.max(2, p * 100)}%"></div></div>`, "info", true);
+  if (LOCAL) return runExtraModelHere(name, bar);
   try {
     bar(0, "Starting…");
     const form = new FormData();
@@ -741,6 +819,23 @@ async function runExtraModel(name: string) {
         return;
       }
     }
+  } catch (e) {
+    notice(`<b>Could not run the model.</b> ${e instanceof Error ? e.message : e}`, "error");
+    runningModel = "";
+  }
+}
+
+/** In-browser result: run one more model here, on the scans kept in this browser, then reopen the result. */
+async function runExtraModelHere(name: string, bar: (p: number, text: string) => void) {
+  try {
+    const spec = (await browserModels())?.runnable.find((m) => m.name === name);
+    if (!spec || !localSaved) throw new Error("this model isn't available here.");
+    bar(0, "Starting…");
+    const result = await runInBrowser(localSaved.inputs, [spec], (step, p) => bar(p, step),
+      { meta: localSaved.meta, files: localSaved.files });
+    bar(1, "Saving the result in this browser…");
+    await saveResult({ ...localSaved, ...result, savedAt: Date.now() });
+    location.href = `?local=1&seg=${name}`;
   } catch (e) {
     notice(`<b>Could not run the model.</b> ${e instanceof Error ? e.message : e}`, "error");
     runningModel = "";
@@ -773,11 +868,11 @@ async function showSegmentation() {
 }
 
 async function load() {
-  meta = (await (await fetch(`${base}/meta.json`)).json()) as Meta;
+  meta = LOCAL ? (structuredClone(localSaved!.meta) as Meta) : ((await (await fetch(`${base}/meta.json`)).json()) as Meta);
   if (!meta.segmentations) throw new Error("old bundle format: rebuild it with the pipeline");
   root.position.set(-meta.center[0], -meta.center[1], -meta.center[2]); // centre the brain at 0
 
-  const brainScene = (await loader.loadAsync(`${base}/${meta.brain}`)).scene;
+  const brainScene = (await loader.loadAsync(fileUrl(meta.brain))).scene;
   brainScene.traverse((obj) => {
     if (obj instanceof THREE.Mesh) {
       if (!obj.geometry.getAttribute("normal")) obj.geometry.computeVertexNormals();
@@ -810,20 +905,32 @@ async function load() {
 
   // segmentation dropdown: expert outline + each model (champion marked)
   const options: Record<string, string> = {};
-  type ApiModel = { name: string; display_name: string; cpu_s_per_case_2_threads: number | null; champion: boolean };
-  const apiModels: ApiModel[] | null = JOB
-    ? await fetch(`${API_BASE}/api/models`).then((r) => (r.ok ? r.json() : null)).then((d) => d?.models ?? null).catch(() => null)
-    : null;
-  if (JOB && !meta.segmentations.expert) options["Expert outline (not uploaded)"] = NO_EXPERT;
+  type UploadModel = { name: string; label: string; champion: boolean; seconds: number | null; localOnly?: boolean };
+  let uploadModels: UploadModel[] | null = null;
+  if (JOB) {
+    const api = await fetch(`${API_BASE}/api/models`).then((r) => (r.ok ? r.json() : null)).then((d) => d?.models ?? null).catch(() => null);
+    uploadModels = api?.map((m: { name: string; display_name: string; champion: boolean; cpu_s_per_case_2_threads: number | null }) =>
+      ({ name: m.name, label: m.display_name, champion: m.champion, seconds: m.cpu_s_per_case_2_threads })) ?? null;
+  } else if (LOCAL) {
+    const bm = await browserModels();
+    if (bm) {
+      uploadModels = [...bm.runnable.map((m) => ({ name: m.name, label: m.label, champion: !!m.champion, seconds: browserSeconds(m) })),
+        ...bm.localOnly.map((m) => ({ ...m, seconds: null, localOnly: true }))];
+    }
+  }
+  if ((JOB || LOCAL) && !meta.segmentations.expert) options["Expert outline (not uploaded)"] = NO_EXPERT;
   for (const [source, seg] of Object.entries(meta.segmentations)) {
-    if (apiModels && source !== "expert") continue; // uploads: models listed below, in a fixed order
+    if (uploadModels && source !== "expert") continue; // uploads: models listed below, in a fixed order
     options[seg.champion ? `★ ${seg.label}` : seg.label] = source; // ★ = champion (the dropdown is narrow)
   }
-  for (const m of apiModels ?? []) {
-    const name = `${m.champion ? "★ " : ""}${m.display_name}`;
+  for (const m of uploadModels ?? []) {
+    const name = `${m.champion ? "★ " : ""}${m.label}`;
+    modelLabels.set(m.name, m.label);
     if (meta.segmentations[m.name]) options[name] = m.name;
+    // in-browser results: a model too large for a browser runs only in the local app
+    else if (m.localOnly) options[`${name}: only when run locally`] = `localonly:${m.name}`;
     // not run on this upload yet: picking it runs it
-    else options[`${name}: run it (about ${Math.max(1, Math.round(m.cpu_s_per_case_2_threads ?? 10))} s)`] = `run:${m.name}`;
+    else options[`${name}: run it (about ${Math.max(1, Math.round(m.seconds ?? 10))} s)`] = `run:${m.name}`;
   }
   const wanted = URL_PARAMS.get("seg");
   params.seg = wanted && wanted in meta.segmentations ? wanted : meta.default_segmentation;
@@ -844,7 +951,7 @@ async function load() {
   missedCtrl = segFolder.add(params, "showMissed").name("Show missed (blue)").onChange(applySettings);
   extraCtrl = segFolder.add(params, "showExtra").name("Show extra (orange)").onChange(applySettings);
   greyCtrl = segFolder.add(params, "expertOpacity", 0, 0.8, 0.01).name("Expert outline (grey)").onChange(applySettings);
-  if (Object.keys(options).length < 2 && !JOB) segFolder.hide(); // nothing to choose between (uploads always show it)
+  if (Object.keys(options).length < 2 && !JOB && !LOCAL) segFolder.hide(); // nothing to choose between (uploads always show it)
 
   // the MRI scans for the slicing plane: only the default one now, the others when picked
   if (meta.volumes) {
@@ -874,7 +981,7 @@ async function showScan() {
   if (!meta?.volumes || !slice) return;
   const name = params.scan;
   if (!scanTextures.has(name)) {
-    const data = await fetchScan(`${base}/${meta.volumes.files[name]}`);
+    const data = await fetchScan(fileUrl(meta.volumes.files[name]));
     scanTextures.set(name, makeVolumeTexture(data, meta.volumes.shape));
   }
   if (name !== params.scan) return; // the user picked another scan while this one was downloading
@@ -1032,7 +1139,12 @@ async function start() {
   } catch {
     // no gallery (e.g. a single uploaded case): just show the case
   }
-  if (JOB) {
+  if (LOCAL) {
+    localSaved = await loadResult();
+    if (!localSaved) throw new Error("not stored");
+    localFiles = fileUrls(localSaved.files);
+    caseId = "upload";
+  } else if (JOB) {
     caseId = "upload";
     base = `${API_BASE}/api/cases/${JOB}`; // an uploaded case, served by the API
   } else {
@@ -1048,7 +1160,10 @@ async function start() {
 }
 
 start().catch((err) => {
-  document.getElementById("info")!.textContent = JOB
+  document.getElementById("info")!.textContent = LOCAL
+    ? "This result was computed in your browser, and it isn't stored here anymore (only the latest upload is kept). " +
+      "Upload the scans again."
+    : JOB
     ? `Could not load this upload: results are deleted after a few hours. (${err})`
     : `Could not load ${caseId}: ${err}`;
   console.error(err);
