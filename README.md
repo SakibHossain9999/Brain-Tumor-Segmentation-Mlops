@@ -23,10 +23,19 @@ An end-to-end project that takes brain MRI scans, finds the tumour in 3D, and sh
 
 > **Not a medical device.** Research and education only.
 
+## Project links
+
+| Where | What's there |
+|---|---|
+| **GitHub** (this repo) | All code, results, tests, Dockerfile and the CI/CD pipeline; the built container image under *Packages* |
+| [**Hugging Face: models and demo data**](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-mlops) (public) | The three ONNX models with their specs and scores, the 4 sample brains to try the upload, and the 6 gallery brains for the 3D viewer. Docker and CI download from here |
+| [**Hugging Face: training backup**](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-training) (private) | PyTorch checkpoints, the full MLflow history and model registry, test predictions and logs, restorable with `scripts/backup.py` |
+
 ---
 
 ## Contents
 
+- [Project links](#project-links)
 - [Background in plain words](#background-in-plain-words)
 - [Results](#results)
 - [How it all fits together](#how-it-all-fits-together)
