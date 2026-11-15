@@ -25,8 +25,52 @@ An end-to-end project that takes brain MRI scans, finds the tumour in 3D, and sh
 
 ---
 
+## Run it locally
+
+You need about 6 GB of free disk space and 8 GB of RAM (16 GB to also run Swin UNETR). No GPU is needed.
+The models, sample brains and 3D gallery (~430 MB) are downloaded automatically from the
+[Hugging Face Hub](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-mlops).
+
+**Option 1: Docker (easiest, one command after cloning)**
+
+```bash
+git clone https://github.com/SakibHossain9999/Brain-Tumor-Segmentation-Mlops.git
+cd Brain-Tumor-Segmentation-Mlops
+docker build -t brain-seg .              # first build takes ~10 minutes
+docker run --rm -p 7860:7860 brain-seg
+```
+
+Open **http://localhost:7860**.
+
+**Option 2: without Docker** (Python 3.11 and Node.js 22)
+
+```bash
+git clone https://github.com/SakibHossain9999/Brain-Tumor-Segmentation-Mlops.git
+cd Brain-Tumor-Segmentation-Mlops
+python -m venv .venv && source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements/api.txt
+python scripts/hub.py download --repo MohammadSakibHossain/brain-tumor-segmentation-mlops --samples-dir web/public/samples
+cd web && npm ci && npm run build && cd ..                  # build the viewer
+uvicorn api.main:app --port 8000
+```
+
+Open **http://localhost:8000**.
+
+**Then try it:**
+1. Pick a brain from the **sample gallery**, rotate it, switch the style to hatching, and turn on the comparison
+   with the expert outline.
+2. In **Try your own scans**, download a sample brain, drop it (and its `_seg` outline, optional) into the boxes,
+   choose a model and click **Segment**. SegResNet takes about 5–10 seconds on a laptop CPU.
+3. Open the **Models** page for the training curves and test results.
+
+To train the models yourself on a GPU, see [Running it yourself](#running-it-yourself).
+
+---
+
 ## Contents
 
+- [Run it locally](#run-it-locally)
 - [Background in plain words](#background-in-plain-words)
 - [Results](#results)
 - [How it all fits together](#how-it-all-fits-together)
