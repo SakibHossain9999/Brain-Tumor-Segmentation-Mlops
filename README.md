@@ -25,52 +25,8 @@ An end-to-end project that takes brain MRI scans, finds the tumour in 3D, and sh
 
 ---
 
-## Run it locally
-
-You need about 6 GB of free disk space and 8 GB of RAM (16 GB to also run Swin UNETR). No GPU is needed.
-The models, sample brains and 3D gallery (~430 MB) are downloaded automatically from the
-[Hugging Face Hub](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-mlops).
-
-**Option 1: Docker (easiest, one command after cloning)**
-
-```bash
-git clone https://github.com/SakibHossain9999/Brain-Tumor-Segmentation-Mlops.git
-cd Brain-Tumor-Segmentation-Mlops
-docker build -t brain-seg .              # first build takes ~10 minutes
-docker run --rm -p 7860:7860 brain-seg
-```
-
-Open **http://localhost:7860**.
-
-**Option 2: without Docker** (Python 3.11 and Node.js 22)
-
-```bash
-git clone https://github.com/SakibHossain9999/Brain-Tumor-Segmentation-Mlops.git
-cd Brain-Tumor-Segmentation-Mlops
-python -m venv .venv && source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu
-pip install -r requirements/api.txt
-python scripts/hub.py download --repo MohammadSakibHossain/brain-tumor-segmentation-mlops --samples-dir web/public/samples
-cd web && npm ci && npm run build && cd ..                  # build the viewer
-uvicorn api.main:app --port 8000
-```
-
-Open **http://localhost:8000**.
-
-**Then try it:**
-1. Pick a brain from the **sample gallery**, rotate it, switch the style to hatching, and turn on the comparison
-   with the expert outline.
-2. In **Try your own scans**, download a sample brain, drop it (and its `_seg` outline, optional) into the boxes,
-   choose a model and click **Segment**. SegResNet takes about 5–10 seconds on a laptop CPU.
-3. Open the **Models** page for the training curves and test results.
-
-To train the models yourself on a GPU, see [Running it yourself](#running-it-yourself).
-
----
-
 ## Contents
 
-- [Run it locally](#run-it-locally)
 - [Background in plain words](#background-in-plain-words)
 - [Results](#results)
 - [How it all fits together](#how-it-all-fits-together)
@@ -83,9 +39,9 @@ To train the models yourself on a GPU, see [Running it yourself](#running-it-you
 - [Stage 5: the upload service (API)](#stage-5-the-upload-service-api)
 - [Stage 6: the 3D viewer](#stage-6-the-3d-viewer)
 - [Stage 7: tests, Docker and CI/CD](#stage-7-tests-docker-and-cicd)
-- [Running it yourself](#running-it-yourself)
 - [Limitations](#limitations)
 - [Credits and licences](#credits-and-licences)
+- [Run it locally](#run-it-locally)
 
 ---
 
@@ -484,43 +440,6 @@ image, or memory limits is caught before it is deployed.
 
 ---
 
-## Running it yourself
-
-**Just the app (Docker):**
-
-```bash
-docker build -t brain-seg .
-docker run -p 7860:7860 --memory 16g --cpus 2 brain-seg
-# open http://localhost:7860
-```
-
-**Development (no Docker):**
-
-```bash
-pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu   # or a CUDA build for training
-pip install -r requirements/train.txt
-python scripts/hub.py download --repo MohammadSakibHossain/brain-tumor-segmentation-mlops   # models, samples, gallery
-
-PYTHONPATH=.:pipeline BRAIN_THREADS=4 uvicorn api.main:app --port 8000   # API
-cd web && npm ci && npm run dev                                         # viewer at http://localhost:5173
-python -m pytest -q tests                                               # unit tests
-```
-
-**Reproduce the models from scratch (GPU):**
-
-```bash
-python scripts/download_msd.py                 # ~7 GB into data/msd
-python scripts/make_split.py                   # splits/msd_split.json (already in the repo)
-bash scripts/train_all.sh                      # ~17 h on one RTX A6000; watch with: mlflow ui --backend-store-uri sqlite:///mlflow.db
-python ml/evaluate.py --split test --save-preds
-python ml/export_onnx.py
-python ml/register.py --champion segresnet --reason "ties Swin UNETR, 4x faster on CPU"
-PYTHONPATH=pipeline python scripts/build_gallery.py
-python scripts/make_samples.py && python scripts/build_models_page.py
-```
-
----
-
 ## Limitations
 
 - **Training data is old and small:** 484 brains from BraTS 2016/2017 (pre-operative gliomas). Newer scanners,
@@ -549,3 +468,69 @@ python scripts/make_samples.py && python scripts/build_models_page.py
   CVPRW 2024. `ml/models/segformer3d.py` is copied from [OSUPCVLab/SegFormer3D](https://github.com/OSUPCVLab/SegFormer3D)
   and is under **GPL-3.0**.
 - Built with PyTorch, MONAI, ONNX Runtime, MLflow, FastAPI, scikit-image, trimesh, three.js and Vite.
+
+---
+
+## Run it locally
+
+You need about 6 GB of free disk space and 8 GB of RAM (16 GB to also run Swin UNETR). No GPU is needed.
+The models, sample brains and 3D gallery (~430 MB) are downloaded automatically from the
+[Hugging Face Hub](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-mlops).
+
+**Option 1: Docker (easiest, one command after cloning)**
+
+```bash
+git clone https://github.com/SakibHossain9999/Brain-Tumor-Segmentation-Mlops.git
+cd Brain-Tumor-Segmentation-Mlops
+docker build -t brain-seg .              # first build takes ~10 minutes
+docker run --rm -p 7860:7860 brain-seg
+```
+
+Open **http://localhost:7860**.
+
+**Option 2: without Docker** (Python 3.11 and Node.js 22)
+
+```bash
+git clone https://github.com/SakibHossain9999/Brain-Tumor-Segmentation-Mlops.git
+cd Brain-Tumor-Segmentation-Mlops
+python -m venv .venv && source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu
+pip install -r requirements/api.txt
+python scripts/hub.py download --repo MohammadSakibHossain/brain-tumor-segmentation-mlops --samples-dir web/public/samples
+cd web && npm ci && npm run build && cd ..                  # build the viewer
+uvicorn api.main:app --port 8000
+```
+
+Open **http://localhost:8000**.
+
+**Then try it:**
+1. Pick a brain from the **sample gallery**, rotate it, switch the style to hatching, and turn on the comparison
+   with the expert outline.
+2. In **Try your own scans**, download a sample brain, drop it (and its `_seg` outline, optional) into the boxes,
+   choose a model and click **Segment**. SegResNet takes about 5–10 seconds on a laptop CPU.
+3. Open the **Models** page for the training curves and test results.
+
+**For development** (live reload, tests, training packages):
+
+```bash
+pip install torch==2.11.0 --index-url https://download.pytorch.org/whl/cpu   # or a CUDA build for training
+pip install -r requirements/train.txt
+python scripts/hub.py download --repo MohammadSakibHossain/brain-tumor-segmentation-mlops   # models, samples, gallery
+
+uvicorn api.main:app --port 8000 --reload                               # API (restarts on code changes)
+cd web && npm ci && npm run dev                                         # viewer with live reload at http://localhost:5173
+python -m pytest -q tests                                               # unit tests
+```
+
+**Reproduce the models from scratch** (NVIDIA GPU; install a CUDA build of PyTorch first):
+
+```bash
+python scripts/download_msd.py                 # ~7 GB into data/msd
+python scripts/make_split.py                   # splits/msd_split.json (already in the repo)
+bash scripts/train_all.sh                      # ~17 h on one RTX A6000; watch with: mlflow ui --backend-store-uri sqlite:///mlflow.db
+python ml/evaluate.py --split test --save-preds
+python ml/export_onnx.py
+python ml/register.py --champion segresnet --reason "ties Swin UNETR, 4x faster on CPU"
+PYTHONPATH=pipeline python scripts/build_gallery.py
+python scripts/make_samples.py && python scripts/build_models_page.py
+```
