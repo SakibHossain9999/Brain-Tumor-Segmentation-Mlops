@@ -227,8 +227,15 @@ def clean_old_jobs():
         old += [j for j in jobs.values() if j.status == "failed" and not j.parent and j not in old]
         for j in old:
             del jobs[j.id]
+        known = set(jobs)
     for j in old:
         shutil.rmtree(JOBS_DIR / j.id, ignore_errors=True)
+    # folders no job points to (e.g. an upload interrupted before its result was written, which a restart
+    # can't reload): removed by their age on disk, so they don't pile up on a long-running server
+    if JOBS_DIR.is_dir():
+        for d in JOBS_DIR.iterdir():
+            if d.is_dir() and d.name not in known and d.stat().st_mtime < cutoff:
+                shutil.rmtree(d, ignore_errors=True)
 
 
 # --- the web app

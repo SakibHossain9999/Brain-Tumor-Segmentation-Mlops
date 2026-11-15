@@ -242,7 +242,7 @@ them (zones, sizes, which segmentation is the default, scores if known).
 
 | File | Purpose | Main contents |
 |---|---|---|
-| `main.py` | FastAPI app: queue, models, endpoints, static viewer | one background worker thread working through a job queue; `run_job` (read upload → run model → build bundle → score against the expert outline if given); `run_extra_model` (run another model on an earlier upload); `get_model` (keeps SegResNet and SegFormer3D loaded, loads Swin UNETR per job and frees it afterwards); `restore_jobs` (finished jobs survive a restart); `clean_old_jobs` (deletes uploads after 6 h); serves `web/dist` if present |
+| `main.py` | FastAPI app: queue, models, endpoints, static viewer | one background worker thread working through a job queue; `run_job` (read upload → run model → build bundle → score against the expert outline if given); `run_extra_model` (run another model on an earlier upload); `get_model` (keeps SegResNet and SegFormer3D loaded, loads Swin UNETR per job and frees it afterwards); `restore_jobs` (finished jobs survive a restart); `clean_old_jobs` (deletes uploads after 6 h, including leftover folders of interrupted uploads); serves `web/dist` if present |
 | `uploads.py` | Read and check uploads, with clear error messages | `load_upload(scans, label, label_format)` accepts one 4-in-1 MSD file or four BraTS files; checks matching sizes, ~1 mm spacing, finite values, skull removed, scans overlap; works out the label numbering (a 4 means BraTS; otherwise the user's choice or the scans' format); `UploadError` |
 | `test_api.py` | End-to-end test of a running server, used in CI | (1) one MSD file + expert outline with two models: recognised as test brain BRATS_075, champion shown first, files served, no path escape; (2) four BraTS files without outline: champion used by default; (2b) a second model run on that upload afterwards, and running it twice refused; (3) mistakes (unknown model, missing scans, wrong file type) each get a clear `400` message |
 | `__init__.py` | makes `api` importable | |
@@ -303,7 +303,7 @@ them (zones, sizes, which segmentation is the default, scores if known).
 | `setup_machine.sh` | Rebuilds the whole project on a new machine: environment, models and data, training backup, dataset, viewer packages, then runs the tests (see [Set up a new machine](#set-up-a-new-machine)) |
 | `backup.py` | Backs up / restores what exists only on the training machine (PyTorch checkpoints, MLflow database and run files, test predictions, logs) to a Hugging Face repo, with checksums; `restore` rewrites MLflow's stored folder paths so the history works on a new machine |
 
-### `tests/`: unit tests (pytest, 24 tests, ~5 s, no dataset or models needed)
+### `tests/`: unit tests (pytest, 25 tests, ~5 s, no dataset or models needed)
 
 | File | What it checks |
 |---|---|
@@ -312,6 +312,7 @@ them (zones, sizes, which segmentation is the default, scores if known).
 | `test_meshing.py` | a ball becomes a closed surface of the right size; the affine places it in millimetres; empty or tiny masks give nothing; scattered specks no longer crash (regression test) |
 | `test_uploads.py` | both upload formats read into the training scan order; label numbering is detected; missing scan, single 3D file, skull not removed, wrong spacing, not a NIfTI file and mismatched sizes are each refused with the right message |
 | `test_metrics_and_inference.py` | Dice/HD95 on perfect, empty, missed and shifted predictions; fingerprints depend on voxel values not storage type; `predict` crops to the brain, feeds the model full 160³ windows only and returns a full-size result |
+| `test_job_cleanup.py` | old uploads are deleted, including folders the server can't reload after a restart (an interrupted upload); recent ones and known jobs are kept |
 
 ### Other files
 
@@ -463,7 +464,7 @@ marching cubes). On GitHub Pages a small service worker (`coi-serviceworker`) en
 
 ## Stage 7: tests, Docker and CI/CD
 
-**Unit tests** (`tests/`, 24 tests, ~5 s): synthetic brains only, so they run anywhere without the 7 GB dataset.
+**Unit tests** (`tests/`, 25 tests, ~5 s): synthetic brains only, so they run anywhere without the 7 GB dataset.
 
 **Docker image** (`Dockerfile`), two stages:
 1. `node:22-slim` builds the viewer into static files.
