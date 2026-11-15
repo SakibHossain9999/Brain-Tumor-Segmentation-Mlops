@@ -51,7 +51,7 @@ An end-to-end project that takes brain MRI scans, finds the tumour in 3D, and sh
 |---|---|
 | **GitHub** (this repo) | All code, results, tests, Dockerfile and the CI/CD pipeline; the built container image under *Packages* |
 | [**Hugging Face: models and demo data**](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-mlops) (public) | The three ONNX models with their specs and scores, the 4 sample brains to try the upload, and the 6 gallery brains for the 3D viewer. Docker and CI download from here |
-| [**Hugging Face: training backup**](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-training) (private) | PyTorch checkpoints, the full MLflow history and model registry, test predictions and logs, restorable with `scripts/backup.py` |
+| [**Hugging Face: training backup**](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-training) (public) | PyTorch checkpoints, the full MLflow history and model registry, test predictions and logs, restorable with `scripts/backup.py` |
 
 ---
 
@@ -303,8 +303,8 @@ them (zones, sizes, which segmentation is the default, scores if known).
 | `build_models_page.py` | Collects training curves (training loss averaged per 1,000 steps), test results, per-split Dice and statistics → `web/public/data/models.json` |
 | `hub.py` | Uploads / downloads the large files to / from the Hugging Face Hub (`upload`, `card`, `download --what models samples cases`) |
 | `hub_model_card.md` | The description page of the public Hugging Face model repo |
-| `setup_machine.sh` | Rebuilds the whole project on a new machine: environment, public models and data, private backup, dataset, viewer packages, then runs the tests (see [Set up a new machine](#set-up-a-new-machine)) |
-| `backup.py` | Backs up / restores what exists only on the training machine (PyTorch checkpoints, MLflow database and run files, test predictions, logs) to a private Hugging Face repo, with checksums; `restore` rewrites MLflow's stored folder paths so the history works on a new machine |
+| `setup_machine.sh` | Rebuilds the whole project on a new machine: environment, models and data, training backup, dataset, viewer packages, then runs the tests (see [Set up a new machine](#set-up-a-new-machine)) |
+| `backup.py` | Backs up / restores what exists only on the training machine (PyTorch checkpoints, MLflow database and run files, test predictions, logs) to a Hugging Face repo, with checksums; `restore` rewrites MLflow's stored folder paths so the history works on a new machine |
 
 ### `tests/`: unit tests (pytest, 24 tests, ~5 s, no dataset or models needed)
 
@@ -561,18 +561,16 @@ cd brain-npr
 bash scripts/setup_machine.sh
 ```
 
-It needs conda, git and Node.js 22. Step 4 restores the private training backup only for its owner (logged in to
-Hugging Face); for anyone else it is skipped, and the app still works. It skips anything already present, and
-finishes by running the unit tests.
+It needs conda, git and Node.js 22; no Hugging Face account is needed, since both Hugging Face repos are public.
+It skips anything already present, and finishes by running the unit tests.
 
 | Step | What | From |
 |---|---|---|
 | 1 | Python 3.11 environment `brain-npr` with PyTorch (GPU build) and the pinned packages | the internet (`requirements/train.txt`) |
-| 2 | Hugging Face login | |
-| 3 | ONNX models, sample brains, gallery | [public Hugging Face repo](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-mlops) |
-| 4 | PyTorch checkpoints, MLflow history and registry, test predictions, logs | [private Hugging Face repo](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-training) |
-| 5 | MSD dataset (~7 GB) | the Medical Segmentation Decathlon |
-| 6 | Viewer packages | npm |
+| 2 | ONNX models, sample brains, gallery | [public Hugging Face repo](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-mlops) |
+| 3 | PyTorch checkpoints, MLflow history and registry, test predictions, logs | [training Hugging Face repo](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-training) |
+| 4 | MSD dataset (~7 GB) | the Medical Segmentation Decathlon |
+| 5 | Viewer packages | npm |
 
 Options: `--cpu` (no NVIDIA GPU), `--skip-data` (no retraining planned), `--skip-backup`, `--skip-web`,
 `--skip-env` (reuse an existing environment), `--env NAME`.

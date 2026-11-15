@@ -1,4 +1,4 @@
-"""Back up / restore the training files that exist on the training machine only, to a PRIVATE Hugging Face repo.
+"""Back up / restore the training files that exist on the training machine only, to a Hugging Face repo.
 
     python scripts/backup.py backup  --repo USER/brain-tumor-segmentation-training
     python scripts/backup.py restore --repo USER/brain-tumor-segmentation-training --to .
@@ -29,19 +29,39 @@ from huggingface_hub import CommitOperationAdd, HfApi, snapshot_download
 MODELS = ["segresnet", "swin_unetr", "segformer3d"]
 
 README = """---
-license: other
-tags: [backup]
+license: cc-by-sa-4.0
+tags: [medical-imaging, brain-tumor-segmentation, pytorch, monai, mlflow, checkpoints]
 ---
-# Training backup (private)
+# 3D Brain Tumor Segmentation: training files
 
-Checkpoints, MLflow history, test predictions and logs for
-[Brain-Tumor-Segmentation-Mlops](https://github.com/SakibHossain9999/Brain-Tumor-Segmentation-Mlops).
-Restore into a clone of that repository with:
+Everything behind the trained models of
+[Brain-Tumor-Segmentation-Mlops](https://github.com/SakibHossain9999/Brain-Tumor-Segmentation-Mlops),
+so the results can be reproduced, inspected or built on. The ready-to-run ONNX models and demo data are in
+[MohammadSakibHossain/brain-tumor-segmentation-mlops](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-mlops).
+
+| Path | Contents |
+|---|---|
+| `checkpoints/<model>/best.pt` | PyTorch weights of the best checkpoint (by validation Dice) of SegResNet, Swin UNETR and SegFormer3D |
+| `mlflow/mlflow.db` | MLflow tracking database: every training and test run with parameters, metrics and the model registry (`brain-tumour-seg`, alias `@champion` = SegResNet) |
+| `mlflow/mlruns.tar` | MLflow run files: training curves, example validation images, logged and registered models |
+| `preds/<model>/*.nii.gz` | test-set predictions (label maps) of each model |
+| `logs/` | training, evaluation and export logs |
+| `backup.json` | source, date and SHA-256 checksum of every file |
+
+## Use
+
+In a clone of the GitHub repository:
 
     python scripts/backup.py restore --repo {repo} --to .
-    mlflow ui --backend-store-uri sqlite:///mlflow.db
+    mlflow ui --backend-store-uri sqlite:///mlflow.db        # browse all runs at http://localhost:5000
 
-Contents and checksums: `backup.json`.
+The restore checks every checksum and rewrites MLflow's stored folder paths for the new location.
+To load a checkpoint: `ml.inference.load_model("output/runs/segresnet/best.pt", device)`.
+
+## Licence
+
+Trained on the Medical Segmentation Decathlon Task01 BrainTumour (CC-BY-SA 4.0); these files are shared under the
+same licence. Research and education only: not a medical device.
 """
 
 
@@ -56,7 +76,7 @@ def sha256(path: Path) -> str:
 def backup(repo: str, root: Path):
     root = root.resolve()
     api = HfApi()
-    api.create_repo(repo, repo_type="model", private=True, exist_ok=True)
+    api.create_repo(repo, repo_type="model", exist_ok=True)
     ops, info = [], {"source_root": str(root), "created": time.strftime("%Y-%m-%d %H:%M:%S %Z"), "files": {}}
 
     def add(local: Path, remote: str):
@@ -86,7 +106,7 @@ def backup(repo: str, root: Path):
         total = sum(v["bytes"] for v in info["files"].values())
         print(f"uploading {len(ops)} files, {total / 1e6:.0f} MB ...")
         api.create_commit(repo_id=repo, operations=ops, commit_message=f"Training backup {info['created']}")
-    print(f"backed up to https://huggingface.co/{repo} (private)")
+    print(f"backed up to https://huggingface.co/{repo}")
 
 
 def fix_mlflow_paths(db: Path, old: str, new: str) -> int:
@@ -136,7 +156,7 @@ def restore(repo: str, root: Path):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("action", choices=["backup", "restore"])
-    ap.add_argument("--repo", required=True, help="private Hugging Face repo, e.g. USER/brain-tumor-segmentation-training")
+    ap.add_argument("--repo", required=True, help="Hugging Face repo, e.g. USER/brain-tumor-segmentation-training")
     ap.add_argument("--to", type=Path, default=Path("."), help="project root")
     a = ap.parse_args()
     (backup if a.action == "backup" else restore)(a.repo, a.to)

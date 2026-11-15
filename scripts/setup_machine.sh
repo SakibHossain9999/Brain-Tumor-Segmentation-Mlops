@@ -9,11 +9,11 @@
 #   --cpu           install the CPU build of PyTorch (no NVIDIA GPU)
 #   --env NAME      conda environment name (default: brain-npr)
 #   --skip-env      use the existing conda environment, don't install packages
-#   --skip-backup   don't restore the private training backup (checkpoints, MLflow, predictions, logs)
+#   --skip-backup   don't restore the training backup (checkpoints, MLflow, predictions, logs)
 #   --skip-data     don't download the MSD dataset (~7 GB; only needed to retrain or re-evaluate)
 #   --skip-web      don't install the viewer's Node.js packages
 #
-# Needs: conda, git, Node.js 22 (for the viewer), and a Hugging Face login with access to the private backup.
+# Needs: conda, git and Node.js 22 (for the viewer). No Hugging Face account: both repos are public.
 set -euo pipefail
 
 PUBLIC_REPO=MohammadSakibHossain/brain-tumor-segmentation-mlops
@@ -38,7 +38,7 @@ done
 cd "$(dirname "$0")/.."
 step() { echo; echo "==== $*"; }
 
-step "1/6 Python environment: $ENV_NAME"
+step "1/5 Python environment: $ENV_NAME"
 eval "$(conda shell.bash hook)"
 if [ "$SKIP_ENV" = 0 ]; then
   conda env list | grep -qE "^$ENV_NAME\s" || conda create -n "$ENV_NAME" python=3.11 -y
@@ -51,34 +51,26 @@ else
   echo "using the existing environment"
 fi
 
-step "2/6 Hugging Face login"
-if ! hf auth whoami >/dev/null 2>&1; then
-  echo "Not logged in. Only needed for the private training backup (its owner); the public files need no login."
-  echo "Paste a Hugging Face token to log in, or just press Enter to skip."
-  hf auth login || echo "continuing without a Hugging Face login"
-fi
-hf auth whoami 2>/dev/null | tail -1 || true
-
-step "3/6 Models, sample brains and gallery (public repo $PUBLIC_REPO)"
+step "2/5 Models, sample brains and gallery ($PUBLIC_REPO)"
 python scripts/hub.py download --repo "$PUBLIC_REPO"
 ln -sfn ../../output/samples web/public/samples   # the viewer offers the samples for download
 
-step "4/6 Training backup (private repo $BACKUP_REPO)"
+step "3/5 Training backup: checkpoints, MLflow history, predictions, logs ($BACKUP_REPO)"
 if [ "$SKIP_BACKUP" = 1 ]; then echo "skipped"
 elif [ -e mlflow.db ] || [ -e mlruns ]; then echo "mlflow.db / mlruns already here: skipped (move them away to restore)"
 elif ! python -c "from huggingface_hub import HfApi; HfApi().repo_info('$BACKUP_REPO')" >/dev/null 2>&1; then
-  echo "skipped: this Hugging Face account can't see the private backup (only its owner can)."
+  echo "skipped: the backup repo can't be reached (made private, or no network)."
   echo "Everything needed to run the app is already here; the backup only matters for continuing training."
 else python scripts/backup.py restore --repo "$BACKUP_REPO" --to .
 fi
 
-step "5/6 MSD dataset (~7 GB)"
+step "4/5 MSD dataset (~7 GB)"
 if [ "$SKIP_DATA" = 1 ]; then echo "skipped"
 elif [ -f data/msd/Task01_BrainTumour/dataset.json ]; then echo "already here"
 else python scripts/download_msd.py
 fi
 
-step "6/6 Viewer packages"
+step "5/5 Viewer packages"
 if [ "$SKIP_WEB" = 1 ]; then echo "skipped"
 else (cd web && npm ci)
 fi
