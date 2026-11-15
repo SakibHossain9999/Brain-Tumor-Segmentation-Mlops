@@ -85,7 +85,7 @@ function render(d: Data) {
     ids: d.case_ids,
     y: { min: 0, max: 1, ticks: [0, 0.25, 0.5, 0.75, 1], format: (v) => v.toFixed(2), title: "Dice per brain" },
     // brains in the viewer's gallery open there, already comparing this model with the expert
-    outlierLink: (model, region, id) => (d.gallery_cases.includes(id) ? `/?case=${id}&seg=${model}&cmp=${region}` : null),
+    outlierLink: (model, region, id) => (d.gallery_cases.includes(id) ? `./?case=${id}&seg=${model}&cmp=${region}` : null),
   });
 
   // --- accuracy vs speed
@@ -233,7 +233,7 @@ function render(d: Data) {
   void legend;
 }
 
-fetch("/data/models.json")
+fetch("data/models.json")
   .then((r) => r.json())
   .then(render)
   .catch((err) => {

@@ -1,5 +1,5 @@
 # On every push / pull request: unit tests, viewer build, then build the Docker image and test it end to end
-# under the same limits as a free Hugging Face Space (2 CPUs, 16 GB). On main, the image is pushed to GHCR.
+# with 2 CPUs and 16 GB. On main: the image is pushed to GHCR and the website is deployed to GitHub Pages.
 name: CI
 
 on:
@@ -103,26 +103,37 @@ jobs:
           docker push $IMAGE:latest
           docker push $IMAGE:${GITHUB_SHA::7}
 
-  deploy:
-    # continuous deployment: only after tests, web build and the container end-to-end test pass on main
+  pages:
+    # continuous deployment of the website: only after the tests, the viewer build and the container's
+    # end-to-end test pass on main. Free GitHub Pages needs a public repository, so it waits for that.
     needs: docker
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && github.event.repository.private == false
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
-      name: huggingface-space
-      url: https://huggingface.co/spaces/${{ vars.HF_SPACE || 'MohammadSakibHossain/brain-tumor-segmentation' }}
-    env:
-      HF_TOKEN: ${{ secrets.HF_TOKEN }}
-      HF_SPACE: ${{ vars.HF_SPACE || 'MohammadSakibHossain/brain-tumor-segmentation' }}
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Deploy to the Hugging Face Space
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - name: Gallery brains and sample downloads from the Hugging Face Hub
         run: |
-          if [ -z "$HF_TOKEN" ]; then
-            echo "::warning::HF_TOKEN secret not set: skipping deployment"; exit 0
-          fi
           pip install huggingface_hub==2.4.0
-          python deploy/deploy_space.py --space "$HF_SPACE"
+          python scripts/hub.py download --repo "$HF_REPO" --what cases samples --to . --samples-dir web/public/samples
+      - name: Build the website
+        working-directory: web
+        run: npm ci && npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+      - id: deployment
+        uses: actions/deploy-pages@v4

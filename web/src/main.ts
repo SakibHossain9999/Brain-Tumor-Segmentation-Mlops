@@ -1027,7 +1027,7 @@ updatePanel();
 async function start() {
   let index: GalleryIndex | undefined;
   try {
-    const res = await fetch("/cases/index.json");
+    const res = await fetch("cases/index.json");
     if (res.ok) index = (await res.json()) as GalleryIndex;
   } catch {
     // no gallery (e.g. a single uploaded case): just show the case
@@ -1037,10 +1037,10 @@ async function start() {
     base = `${API_BASE}/api/cases/${JOB}`; // an uploaded case, served by the API
   } else {
     if (!caseId) caseId = index?.cases[0]?.case_id ?? "BRATS_155";
-    base = `/cases/${caseId}`;
+    base = `cases/${caseId}`;
   }
   if (index) renderGallery(index);
-  fetch("/data/try.json")
+  fetch("data/try.json")
     .then((r) => (r.ok ? r.json() : undefined))
     .then((info?: TryInfo) => info && renderTry(info))
     .catch(() => {}); // optional panel: the viewer works without it

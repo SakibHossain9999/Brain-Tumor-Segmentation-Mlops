@@ -1,5 +1,5 @@
 {
- "samples_url": "/samples",
+ "samples_url": "samples",
  "samples": [
   {
    "case_id": "BRATS_075",

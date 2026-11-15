@@ -14,8 +14,8 @@ from pathlib import Path
 ROOT = Path("data/msd/Task01_BrainTumour")
 OUT = Path("output/samples")
 WEB = Path("web/public/data/try.json")  # what the viewer's "Try your own scans" panel shows
-# where visitors download the samples from: the local dev server for now, Hugging Face once deployed
-SAMPLES_URL = "/samples"
+# where visitors download the samples from, relative to the viewer page (works at a site root and in a sub-folder)
+SAMPLES_URL = "samples"
 SPLIT = json.loads(Path("splits/msd_split.json").read_text())
 
 # test brains NOT in the gallery, chosen for variety (from results/*/test_per_case.csv)
