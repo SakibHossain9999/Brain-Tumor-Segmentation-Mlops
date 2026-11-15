@@ -107,7 +107,10 @@ jobs:
     # continuous deployment of the website: only after the tests, the viewer build and the container's
     # end-to-end test pass on main. Free GitHub Pages needs a public repository, so it waits for that.
     needs: docker
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && github.event.repository.private == false
+    # (a re-run replays the original event: if the repo was private then, push again or use "Run workflow")
+    if: >-
+      github.ref == 'refs/heads/main' && github.event.repository.private == false &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     permissions:
       pages: write
