@@ -7,6 +7,15 @@
 ![ONNX Runtime](https://img.shields.io/badge/ONNX%20Runtime-1.32-005ced)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.162-009688)
 ![three.js](https://img.shields.io/badge/three.js-TypeScript-black)
+[![Live demo](https://img.shields.io/badge/live%20demo-GitHub%20Pages-2ea44f)](https://sakibhossain9999.github.io/Brain-Tumor-Segmentation-Mlops/)
+
+> ### [▶ Try the live demo](https://sakibhossain9999.github.io/Brain-Tumor-Segmentation-Mlops/)
+> Explore six test-set brains in 3D with the expert's outline and all three models side by side: switch between
+> toon, pencil-hatching and realistic styles, see exactly where each model missed or added tumour, and slice
+> through the MRI scans. Or **upload your own scans** (with an optional expert outline): SegResNet and SegFormer3D
+> run **entirely in your browser**, so the scans never leave your computer, and you get the 3D result with Dice and
+> HD95 scores in about half a minute. The **Models** page shows training curves, test results and speed for all
+> three models. Swin UNETR is too large for a browser; [run the app locally](#run-it-locally) to use all three.
 
 An end-to-end project that takes brain MRI scans, finds the tumour in 3D, and shows the result in an interactive
 3D viewer in the browser. It covers the whole life of a machine-learning model:
@@ -49,7 +58,7 @@ An end-to-end project that takes brain MRI scans, finds the tumour in 3D, and sh
 
 | Where | What's there |
 |---|---|
-| [**Live website**](https://sakibhossain9999.github.io/Brain-Tumor-Segmentation-Mlops/) | The 3D viewer, the sample gallery and the Models page. Upload your own scans (and, optionally, the expert outline): SegResNet and SegFormer3D run **in your browser**, so the scans never leave your computer. All 3 models when you [run it locally](#run-it-locally) |
+| [**Live website**](https://sakibhossain9999.github.io/Brain-Tumor-Segmentation-Mlops/) (GitHub Pages, deployed by CI) | The 3D viewer, the sample gallery and the Models page. Upload your own scans (and, optionally, the expert outline): SegResNet and SegFormer3D run **in your browser**, so the scans never leave your computer. All 3 models when you [run it locally](#run-it-locally) |
 | **GitHub** (this repo) | All code, results, tests, Dockerfile and the CI/CD pipeline; the built container image under *Packages* |
 | [**Hugging Face: models and demo data**](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-mlops) (public) | The three ONNX models with their specs and scores, the 4 sample brains to try the upload, and the 6 gallery brains for the 3D viewer. Docker and CI download from here |
 | [**Hugging Face: training backup**](https://huggingface.co/MohammadSakibHossain/brain-tumor-segmentation-training) (public) | PyTorch checkpoints, the full MLflow history and model registry, test predictions and logs, restorable with `scripts/backup.py` |
