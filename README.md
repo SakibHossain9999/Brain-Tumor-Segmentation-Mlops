@@ -291,7 +291,9 @@ them (zones, sizes, which segmentation is the default, scores if known).
 | `build_gallery.py` | Builds the viewer's gallery: six chosen test brains (largest, typical, mostly swelling, smallest, models disagree, a failure), each with the expert outline and all three models → `web/public/cases/` |
 | `make_samples.py` | Packs four test brains (4 scans in one file + expert outline) for users to download and try the upload |
 | `build_models_page.py` | Collects training curves (training loss averaged per 1,000 steps), test results, per-split Dice and statistics → `web/public/data/models.json` |
-| `hub.py` | Uploads / downloads the large files to / from the Hugging Face Hub (`upload`, `download --what models samples cases`) |
+| `hub.py` | Uploads / downloads the large files to / from the Hugging Face Hub (`upload`, `card`, `download --what models samples cases`) |
+| `hub_model_card.md` | The description page of the public Hugging Face model repo |
+| `backup.py` | Backs up / restores what exists only on the training machine (PyTorch checkpoints, MLflow database and run files, test predictions, logs) to a private Hugging Face repo, with checksums; `restore` rewrites MLflow's stored folder paths so the history works on a new machine |
 
 ### `tests/`: unit tests (pytest, 24 tests, ~5 s, no dataset or models needed)
 
