@@ -99,10 +99,14 @@ def fix_mlflow_paths(db: Path, old: str, new: str) -> int:
                 cur = con.execute(f'update "{t}" set "{col}" = replace("{col}", ?, ?) where "{col}" like ?',
                                   (old, new, f"%{old}%"))
                 changed += cur.rowcount
-            except sqlite3.Error:
-                pass  # non-text column
+            except sqlite3.OperationalError as e:
+                if "readonly" in str(e) or "locked" in str(e):
+                    raise
+                # otherwise a column replace() can't apply to: skip it
     con.commit()
     con.close()
+    if old != new and changed == 0:
+        raise SystemExit(f"no MLflow paths found to update (expected {old})")
     return changed
 
 
@@ -115,13 +119,14 @@ def restore(repo: str, root: Path):
             raise SystemExit(f"checksum mismatch: {remote}")
     for m in MODELS:
         (root / "output" / "runs" / m).mkdir(parents=True, exist_ok=True)
-        shutil.copy2(cache / "checkpoints" / m / "best.pt", root / "output" / "runs" / m / "best.pt")
+        shutil.copyfile(cache / "checkpoints" / m / "best.pt", root / "output" / "runs" / m / "best.pt")
+    # copyfile, not copy2: files in the Hugging Face cache are read-only, and copy2 would keep that
     for remote, local in [("preds", "output/preds"), ("logs", "output/logs")]:
         if (cache / remote).exists():
-            shutil.copytree(cache / remote, root / local, dirs_exist_ok=True)
+            shutil.copytree(cache / remote, root / local, dirs_exist_ok=True, copy_function=shutil.copyfile)
     if (root / "mlflow.db").exists() or (root / "mlruns").exists():
         raise SystemExit("mlflow.db or mlruns/ already exists here: move them away first")
-    shutil.copy2(cache / "mlflow" / "mlflow.db", root / "mlflow.db")
+    shutil.copyfile(cache / "mlflow" / "mlflow.db", root / "mlflow.db")
     with tarfile.open(cache / "mlflow" / "mlruns.tar") as t:
         t.extractall(root, filter="data")
     n = fix_mlflow_paths(root / "mlflow.db", info["source_root"], str(root))
