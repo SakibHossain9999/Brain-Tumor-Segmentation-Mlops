@@ -96,8 +96,33 @@ jobs:
       - name: Push to GitHub Container Registry
         if: github.ref == 'refs/heads/main' && github.event_name == 'push'
         run: |
+          IMAGE=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')   # Docker image names must be lowercase
           echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
           docker tag brain-seg:test $IMAGE:latest
           docker tag brain-seg:test $IMAGE:${GITHUB_SHA::7}
           docker push $IMAGE:latest
           docker push $IMAGE:${GITHUB_SHA::7}
+
+  deploy:
+    # continuous deployment: only after tests, web build and the container end-to-end test pass on main
+    needs: docker
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment:
+      name: huggingface-space
+      url: https://huggingface.co/spaces/${{ vars.HF_SPACE || 'MohammadSakibHossain/brain-tumor-segmentation' }}
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      HF_SPACE: ${{ vars.HF_SPACE || 'MohammadSakibHossain/brain-tumor-segmentation' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Deploy to the Hugging Face Space
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::warning::HF_TOKEN secret not set: skipping deployment"; exit 0
+          fi
+          pip install huggingface_hub==2.4.0
+          python deploy/deploy_space.py --space "$HF_SPACE"
