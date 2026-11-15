@@ -17,6 +17,13 @@
 > HD95 scores in about half a minute. The **Models** page shows training curves, test results and speed for all
 > three models. Swin UNETR is too large for a browser; [run the app locally](#run-it-locally) to use all three.
 
+<p align="center">
+  <a href="https://sakibhossain9999.github.io/Brain-Tumor-Segmentation-Mlops/">
+    <img src="docs/demo.gif" alt="The live demo: a brain with its tumour rotating in toon style, then pencil hatching, then the comparison with the expert outline (missed tumour in blue, extra in orange), the MRI slice sweeping through in realistic style, and the Models page charts" width="100%">
+  </a>
+  <br><sub>Recorded from the live website: toon → pencil hatching → model vs expert (blue missed, orange extra) → MRI slice → Models page</sub>
+</p>
+
 An end-to-end project that takes brain MRI scans, finds the tumour in 3D, and shows the result in an interactive
 3D viewer in the browser. It covers the whole life of a machine-learning model:
 
@@ -325,6 +332,7 @@ them (zones, sizes, which segmentation is the default, scores if known).
 | `models/manifest.json` | registry snapshot: champion, reason, versions, checksums |
 | `notebooks/01_explore_data.ipynb` | first look at one case: the four scans, the label values, the WT/TC/ET regions, and a check of which label number is the enhancing tumour (brightest on the contrast scan) |
 | `docs/architecture.svg`, `docs/make_architecture.py` | the two-row pipeline diagram above, and the Python script that draws it (edit the script, rerun it to update the picture) |
+| `docs/demo.gif`, `docs/record_demo.mjs`, `docs/make_demo_gif.sh` | the 15-second demo at the top; recorded from the live website with headless Chrome (puppeteer) and turned into a GIF with ffmpeg, so it can be re-recorded after changes |
 | `requirements/api.txt` | pinned packages for serving (CPU) |
 | `requirements/train.txt` | adds training, MLflow, ONNX export and test packages |
 | `Dockerfile`, `.dockerignore` | the container image (see Stage 7) |
