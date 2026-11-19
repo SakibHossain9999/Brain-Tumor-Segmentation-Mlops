@@ -471,6 +471,9 @@ marching cubes). On GitHub Pages a small service worker (`coi-serviceworker`) en
     0.8760 vs 0.8761, HD95 identical.
   - BRATS_156 as 4 BraTS-style files stored in the other orientation (LPS): recognised as BRATS_156 from its
     fingerprints (so every voxel was put back in place), Dice within 0.0015 of the server for every region.
+- **On a real phone** (the live website): uploading the scans and the expert outline is quick; SegResNet and
+  SegFormer3D both run and switching between them works. Segmentation takes longer than on a computer, as expected
+  for a phone's processor.
 - Full uploads with all 3 models, Swin UNETR included, are tested on every push in the Docker container (Stage 7).
 
 ## Stage 7: tests, Docker and CI/CD
