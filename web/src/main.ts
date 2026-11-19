@@ -120,15 +120,21 @@ const brainOpacity: Record<string, number> = { ghost: 1, cutaway: 1, ink: 1, pla
 const opacityState = { value: brainOpacity[params.brain] }; // what the slider shows: the current mode's value
 
 // ---------------------------------------------------------------- renderer, scene, camera, mouse controls
+// the 3D view fills #app, which the page layout sizes: the whole window on a desktop, the top part on a phone
+const appEl = document.getElementById("app")!;
+const viewSize = (): [number, number] => [appEl.clientWidth || innerWidth, appEl.clientHeight || innerHeight];
+const NARROW = matchMedia("(max-width: 1100px), (max-height: 500px)"); // phones and tablets
+const TOUCH = matchMedia("(pointer: coarse)").matches;
+
 const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setPixelRatio(window.devicePixelRatio);
-renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // sharper than 2x costs a lot on phones
+renderer.setSize(...viewSize());
 renderer.localClippingEnabled = true; // needed for the cutaway and the slice cut
-document.getElementById("app")!.appendChild(renderer.domElement);
+appEl.appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xf4f1ea);
-const camera = new THREE.PerspectiveCamera(35, innerWidth / innerHeight, 1, 5000);
+const camera = new THREE.PerspectiveCamera(35, viewSize()[0] / viewSize()[1], 1, 5000);
 const controls = new OrbitControls(camera, renderer.domElement); // drag = rotate, scroll = zoom, right-drag = move
 controls.enableDamping = true;
 
@@ -196,6 +202,7 @@ const plainBrain = new THREE.MeshStandardMaterial({
 const cutawayBrain = toonMaterial(new THREE.Color(0xe8dccb), 3, { side: THREE.DoubleSide });
 const outlineMat = outlineMaterial(params.outlineThickness);
 let viewDistance = 400;
+let fitFactor = 0; // camera distance / brain size that makes the brain fit this view (0 until a case loads)
 const loader = new GLTFLoader();
 
 // cutaway: which part of the brain to remove. Each plane keeps the side its normal points to.
@@ -382,7 +389,8 @@ function renderInfo() {
   const desc = meta.description ? `<div class="muted">${meta.description}</div>` : "";
   document.getElementById("info")!.innerHTML =
     `${heading}${desc}<div>Showing: <b>${seg.label}</b>${badge}</div>${rows}${scores}` +
-    `<div class="hint">drag to rotate · scroll to zoom · hover the tumour</div>`;
+    (TOUCH ? `<div class="hint">drag to rotate · pinch to zoom · tap the tumour</div>`
+      : `<div class="hint">drag to rotate · scroll to zoom · hover the tumour</div>`);
 }
 
 /** Title and case id (an unrecognised upload has no id worth showing). */
@@ -971,7 +979,9 @@ async function load() {
 
   const size = Math.max(...meta.bounds[1].map((v, i) => v - meta!.bounds[0][i]));
   const zoom = Number(URL_PARAMS.get("zoom")) || 1; // ?zoom=2 starts twice as close
-  viewDistance = (size * 2.4) / Math.min(Math.max(zoom, 0.5), 6);
+  // far enough that the brain fits the height (2.4) and, in a tall narrow view such as a phone, the width too
+  fitFactor = Math.max(2.4, 1.35 / camera.aspect);
+  viewDistance = (size * fitFactor) / Math.min(Math.max(zoom, 0.5), 6);
   await showSegmentation();
   setView(new THREE.Vector3(0, 0.3, -1)); // start facing the patient's face
 }
@@ -996,8 +1006,10 @@ document.body.appendChild(tooltip);
 const raycaster = new THREE.Raycaster();
 const pointer = new THREE.Vector2();
 
-renderer.domElement.addEventListener("pointermove", (e) => {
-  pointer.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+/** Mouse: the zone under the pointer. Touch: the zone you tap (a drag rotates instead). */
+function onPointer(e: PointerEvent) {
+  const rect = renderer.domElement.getBoundingClientRect(); // the 3D view may not start at the window's corner
+  pointer.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
   raycaster.setFromCamera(pointer, camera);
   const cmp = comparing();
   const diffMeshes: THREE.Mesh[] = [];
@@ -1024,8 +1036,25 @@ renderer.domElement.addEventListener("pointermove", (e) => {
     tooltip.innerHTML = `<b>${zone.name}</b><br>${zone.volume_ml} mL · ${share}% of the whole tumour<br><small>${seg.label}</small>`;
   }
   tooltip.style.display = "block";
-  tooltip.style.left = `${e.clientX + 14}px`;
-  tooltip.style.top = `${e.clientY + 14}px`;
+  // keep the label on screen near the right and bottom edges (phones)
+  const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+  tooltip.style.left = `${Math.max(4, Math.min(e.clientX + 14, innerWidth - tw - 4))}px`;
+  tooltip.style.top = `${Math.max(4, Math.min(e.clientY + 14, innerHeight - th - 4))}px`;
+}
+renderer.domElement.addEventListener("pointermove", (e) => {
+  if (e.pointerType === "mouse") onPointer(e);
+  else tooltip.style.display = "none"; // dragging on a touch screen: rotating, not pointing
+});
+let tapStart: { x: number; y: number; t: number } | null = null;
+renderer.domElement.addEventListener("pointerdown", (e) => {
+  if (e.pointerType !== "mouse") tapStart = { x: e.clientX, y: e.clientY, t: performance.now() };
+});
+renderer.domElement.addEventListener("pointerup", (e) => {
+  const s = tapStart;
+  tapStart = null;
+  if (!s || e.pointerType === "mouse") return;
+  const still = Math.hypot(e.clientX - s.x, e.clientY - s.y) < 10 && performance.now() - s.t < 500;
+  if (still) onPointer(e);
 });
 
 function screenshot() {
@@ -1169,10 +1198,35 @@ start().catch((err) => {
   console.error(err);
 });
 
-addEventListener("resize", () => {
-  camera.aspect = innerWidth / innerHeight;
+/** Keep the 3D view matched to its area (window resized, phone turned, panel hidden or shown). */
+function fitView() {
+  const [w, h] = viewSize();
+  if (!w || !h) return;
+  camera.aspect = w / h;
   camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
+  renderer.setSize(w, h);
+  // the view became narrower or wider (phone panel hidden, phone turned): move the camera so the brain still fits,
+  // keeping whatever zoom the user chose
+  if (fitFactor) {
+    const f = Math.max(2.4, 1.35 / camera.aspect), k = f / fitFactor;
+    if (Math.abs(k - 1) > 1e-3) {
+      camera.position.sub(controls.target).multiplyScalar(k).add(controls.target);
+      viewDistance *= k;
+      fitFactor = f;
+    }
+  }
+}
+addEventListener("resize", fitView);
+new ResizeObserver(fitView).observe(appEl);
+
+// phones and tablets (small or touch screens): the settings start folded (tap "Display" to open)
+if (NARROW.matches || TOUCH) gui.close();
+// phones: the info panel below the 3D view can be folded away for a full-size view
+const sheetToggle = document.getElementById("sheet-toggle");
+sheetToggle?.addEventListener("click", () => {
+  const folded = document.body.classList.toggle("sheet-min");
+  sheetToggle.textContent = folded ? "Show panel" : "Hide panel";
+  sheetToggle.setAttribute("aria-expanded", String(!folded));
 });
 
 renderer.setAnimationLoop(() => {

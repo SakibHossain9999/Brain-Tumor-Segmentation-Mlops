@@ -69,13 +69,40 @@
       #notice .bar div { height: 100%; width: 0; background: #2a5fa8; transition: width .4s; }
       .tooltip { position: fixed; display: none; pointer-events: none; background: #222d; color: #fff;
                  padding: 6px 10px; border-radius: 6px; font-size: 13px; line-height: 1.4; }
+      .sheet-toggle { display: none; float: right; border: 0; background: #2a5fa81a; color: #2a5fa8; border-radius: 6px;
+                      font: inherit; font-size: 12.5px; padding: 2px 9px; cursor: pointer; }
+
+      /* ---- smaller screens: the panels must not cover the brain ---- */
+      /* tablets and small laptops: a narrower info panel */
+      @media (max-width: 1100px) { #side { width: 270px; } }
+      /* held sideways (or a small laptop): the 3D view starts right of the info panel */
+      @media (max-width: 1100px) and (orientation: landscape) and (min-height: 501px) { #app { left: 290px; } }
+      /* phones and upright tablets: the 3D view on top, the info panels in a scrollable sheet below */
+      @media (max-width: 1100px) and (orientation: portrait), (max-width: 600px) and (min-height: 501px) {
+        #app { bottom: 42%; }
+        #side { top: auto; bottom: 0; left: 0; right: 0; width: auto; height: 42%; max-height: none; padding: 8px;
+                box-sizing: border-box; background: #e9e5db; border-top: 1px solid #00000014; }
+        body.sheet-min #app { bottom: 50px; }
+        body.sheet-min #side { height: 50px; overflow: hidden; }
+        body.sheet-min #side > :not(.nav) { display: none; } /* folded: only the line with the "Show panel" button */
+        .sheet-toggle { display: inline-block; }
+        .nav { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* one line: fits the folded panel */
+        .lil-gui.lil-auto-place { --width: min(245px, 64vw); max-height: calc(58% - 8px); }
+      }
+      /* phones held sideways: the info panels on the left, the 3D view on the right */
+      @media (max-height: 500px) and (orientation: landscape) {
+        #app { left: 42%; }
+        #side { width: calc(42% - 16px); top: 8px; left: 8px; max-height: calc(100% - 16px); }
+        .lil-gui.lil-auto-place { --width: min(230px, 30vw); max-height: 100%; }
+      }
     </style>
   </head>
   <body>
     <div id="app"></div>
     <div id="side">
       <div id="notice" class="card" hidden></div>
-      <div class="card nav"><b>3D viewer</b> · <a href="models.html">Models: scores, training, speed</a></div>
+      <div class="card nav"><button id="sheet-toggle" class="sheet-toggle" aria-expanded="true">Hide panel</button>
+        <b>3D viewer</b> · <a href="models.html">Models: scores, training, speed</a></div>
       <div id="info" class="card">Loading…</div>
       <div id="cases" class="card" hidden></div>
       <div id="try" class="card" hidden></div>

@@ -430,6 +430,9 @@ Open the site and you get:
 - **Comparison with the expert:** tumour the model **missed** in blue, tumour it **added** in orange, and the expert's
   outline in grey, each switchable, with the brain's Dice scores.
 - **MRI slice:** any of the four scans, at any depth, with brightness and contrast.
+- **Phones and tablets:** held upright, the 3D view is on top and the info panels in a scrollable sheet below (which
+  can be folded away for a full-screen view); held sideways, the panels sit on the left. The settings start folded on
+  touch screens, the brain is zoomed to fit the screen's shape, and tapping a tumour zone shows its name and size.
 - **Shareable links:** every view is a URL (`?case=BRATS_075&seg=segresnet&cmp=1&scan=t1c&style=hatching&slice=80`).
 - **Try your own scans:** drop the scans in one box and an optional expert outline in the other, pick models, and
   watch progress; or download one of the four sample brains to try. Where the models run depends on how the viewer

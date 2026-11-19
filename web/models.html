@@ -53,7 +53,11 @@
       .explain p, .explain li { font-size: 14px; margin: 4px 0; }
       .explain ul { padding-left: 20px; margin: 4px 0; }
       #eff-note { color: #898781; font-size: 12.5px; margin-top: 6px; }
-      @media (max-width: 640px) { .cards { grid-template-columns: 1fr; } }
+      @media (max-width: 640px) {
+        .cards { grid-template-columns: 1fr; }
+        /* wide tables scroll sideways in their own box instead of widening the page */
+        table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      }
     </style>
   </head>
   <body>
