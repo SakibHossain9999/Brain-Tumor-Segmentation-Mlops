@@ -85,10 +85,16 @@
         body.sheet-min #app { bottom: 50px; }
         body.sheet-min #side { height: 50px; overflow: hidden; }
         body.sheet-min #side > :not(.nav) { display: none; } /* folded: only the line with the "Show panel" button */
-        .sheet-toggle { display: inline-block; }
-        .nav { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } /* one line: fits the folded panel */
+        .sheet-toggle { display: inline-block; float: none; flex: none; padding: 6px 12px; }
+        /* one line that fits the folded panel: the link and the button side by side, each easy to tap */
+        .nav { display: flex; align-items: center; gap: 10px; padding: 4px 8px 4px 14px; }
+        .nav-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .nav-text a { display: inline-block; padding: 6px 4px; }
+        .nav-long { display: none; }
         .lil-gui.lil-auto-place { --width: min(245px, 64vw); max-height: calc(58% - 8px); }
       }
+      /* upright tablets have room for the full link text */
+      @media (min-width: 601px) and (max-width: 1100px) and (orientation: portrait) { .nav-long { display: inline; } }
       /* phones held sideways: the info panels on the left, the 3D view on the right */
       @media (max-height: 500px) and (orientation: landscape) {
         #app { left: 42%; }
@@ -101,8 +107,9 @@
     <div id="app"></div>
     <div id="side">
       <div id="notice" class="card" hidden></div>
-      <div class="card nav"><button id="sheet-toggle" class="sheet-toggle" aria-expanded="true">Hide panel</button>
-        <b>3D viewer</b> · <a href="models.html">Models: scores, training, speed</a></div>
+      <div class="card nav"><span class="nav-text"><b>3D viewer</b> · <a href="models.html">Models<span
+        class="nav-long">: scores, training, speed</span></a></span><button id="sheet-toggle" class="sheet-toggle"
+        aria-expanded="true">Hide panel</button></div>
       <div id="info" class="card">Loading…</div>
       <div id="cases" class="card" hidden></div>
       <div id="try" class="card" hidden></div>
